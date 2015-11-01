@@ -3,5 +3,5 @@
 
 #except .gitignore and .v
 !.gitignore
-!.v
-
+!*.v
+!*.xdc
