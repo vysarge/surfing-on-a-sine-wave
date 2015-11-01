@@ -3,7 +3,3 @@
 *.jou
 */surfing-on-a-sine-wave
 
-#except .gitignore and .v
-!.gitignore
-!*.v
-!*.xdc

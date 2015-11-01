@@ -1,4 +1,5 @@
 `timescale 1ns / 1ps
+
 //////////////////////////////////////////////////////////////////////////////////
 // Company: 
 // 
@@ -77,7 +78,7 @@ module nexys(
     wire [9:0] hcount;
     wire [9:0] vcount;
     wire hsync, vsync, at_display_area;
-    vga vga1(.vga_clock(clock_25mhz),.hcount(hcount),.vcount(vcount),
+    vga_encoder vga1(.vga_clock(clock_25mhz),.hcount(hcount),.vcount(vcount),
           .hsync(hsync),.vsync(vsync),.at_display_area(at_display_area));
         
     assign VGA_R = at_display_area ? {4{hcount[7]}} : 0;
@@ -96,30 +97,5 @@ module clock_quarter_divider(input clk100_mhz, output reg clock_25mhz = 0);
             clock_25mhz <= ~clock_25mhz;
         end
     end
-endmodule
-
-module vga(input vga_clock,
-            output reg [9:0] hcount = 0,    // pixel number on current line
-            output reg [9:0] vcount = 0,	 // line number
-            output vsync, hsync, at_display_area);
-    // Counters.
-    always @(posedge vga_clock) begin
-        if (hcount == 799) begin
-            hcount <= 0;
-        end
-        else begin
-            hcount <= hcount +  1;
-        end
-        if (vcount == 524) begin
-            vcount <= 0;
-        end
-        else if(hcount == 799) begin
-            vcount <= vcount + 1;
-        end
-    end
-    
-    assign hsync = (hcount < 96);
-    assign vsync = (vcount < 2);
-    assign at_display_area = (hcount >= 144 && hcount < 784 && vcount >= 35 && vcount < 515);
 endmodule
 

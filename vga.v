@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
-
-module vga(input vga_clock,
+//vga encoder
+module vga_encoder(input vga_clock,
             output reg [9:0] hcount = 0,    // pixel number on current line
             output reg [9:0] vcount = 0,	 // line number
             output vsync, hsync, at_display_area);
