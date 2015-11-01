@@ -1,5 +1,7 @@
-#ignore all files
-*
+#ignore all files in directories
+*.log
+*.jou
+*/surfing-on-a-sine-wave
 
 #except .gitignore and .v
 !.gitignore
