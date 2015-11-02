@@ -37,6 +37,14 @@ module nexys(
    output[7:0] AN    // Display 0-7
    );
    
+    // 65MHz clock generation using DCM
+    wire clock_65mhz_unbuf,clock_65mhz;
+    DCM vclk1(.CLKIN(CLK100MHZ),.CLKFX(clock_65mhz_unbuf));
+    // synthesis attribute CLKFX_DIVIDE of vclk1 is 20
+    // synthesis attribute CLKFX_MULTIPLY of vclk1 is 13
+    // synthesis attribute CLK_FEEDBACK of vclk1 is NONE
+    // synthesis attribute CLKIN_PERIOD of vclk1 is 10
+    BUFG vclk2(.O(clock_65mhz),.I(clock_65mhz_unbuf));
 
 // create 25mhz system clock
     wire clock_25mhz;
@@ -54,7 +62,8 @@ module nexys(
 //  remove these lines and insert your lab here
 
     assign LED = SW;     
-    assign JA[7:0] = 8'b0;
+    assign JA[7:1] = 7'b0;
+    assign JA[0] = clock_65mhz;
     assign data = {28'h0123456, SW[3:0]};   // display 0123456 + SW
     assign LED16_R = BTNL;                  // left button -> red led
     assign LED16_G = BTNC;                  // center button -> green led
@@ -75,27 +84,16 @@ module nexys(
 //////////////////////////////////////////////////////////////////////////////////
 // sample Verilog to generate color bars
     
-    wire [9:0] hcount;
+    wire [10:0] hcount;
     wire [9:0] vcount;
-    wire hsync, vsync, at_display_area;
-    vga_encoder vga1(.vga_clock(clock_25mhz),.hcount(hcount),.vcount(vcount),
-          .hsync(hsync),.vsync(vsync),.at_display_area(at_display_area));
+    wire hsync, vsync, blank;
+    xvga vga1(.vclock(clock_65mhz),.hcount(hcount),.vcount(vcount),
+          .hsync(hsync),.vsync(vsync),.blank(blank));
         
-    assign VGA_R = at_display_area ? {4{hcount[7]}} : 0;
-    assign VGA_G = at_display_area ? {4{hcount[6]}} : 0;
-    assign VGA_B = at_display_area ? {4{hcount[5]}} : 0;
+    assign VGA_R = blank ? 0: {4{hcount[7]}};
+    assign VGA_G = blank ? 0: {4{hcount[6]}};
+    assign VGA_B = blank ? 0: {4{hcount[5]}};
     assign VGA_HS = ~hsync;
     assign VGA_VS = ~vsync;
-endmodule
-
-module clock_quarter_divider(input clk100_mhz, output reg clock_25mhz = 0);
-    reg counter = 0;
-    
-    always @(posedge clk100_mhz) begin
-        counter <= counter + 1;
-        if (counter == 0) begin
-            clock_25mhz <= ~clock_25mhz;
-        end
-    end
 endmodule
 
