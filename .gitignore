@@ -2,5 +2,5 @@
 *
 
 !*.v
-#!.gitignore
-#!/*
+!.gitignore
+!*/
