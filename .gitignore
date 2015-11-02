@@ -4,3 +4,6 @@
 !*.v
 !.gitignore
 !*/
+!surfing-on-a-sine-wave/
+!surfing-on-a-sine-wave/surfing-on-a-sine-wave.srcs
+!surfing
