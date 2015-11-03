@@ -41,9 +41,8 @@ module nexys(
     wire locked;
     wire clock_65mhz;
     reg reset;
-    clk_wiz_0_clk_wiz 65mhzgen(.clk_100mhz(CLK100MHZ), .clk_65mhz(clock_65mhz),
-     .reset(reset), .locked(locked));
-
+    clk_wiz_0 gen_65mhz(.clk_100mhz(CLK100MHZ), .clk_65mhz(clock_65mhz), .reset(reset), .locked(locked));
+    
 // create 25mhz system clock
     wire clock_25mhz;
     clock_quarter_divider clockgen(.clk100_mhz(CLK100MHZ), .clock_25mhz(clock_25mhz));
@@ -51,7 +50,7 @@ module nexys(
 //  instantiate 7-segment display;  
     wire [31:0] data;
     wire [6:0] segments;
-    display_8hex display(.clk(clock_25mhz),.data(data), .seg(segments), .strobe(AN));    
+    display_8hex display8hex(.clk(clock_25mhz),.data(data), .seg(segments), .strobe(AN));    
     assign SEG[6:0] = segments;
     assign SEG[7] = 1'b1;
 
@@ -82,15 +81,48 @@ module nexys(
 //////////////////////////////////////////////////////////////////////////////////
 // sample Verilog to generate color bars
     
-    wire [10:0] hcount;
-    wire [9:0] vcount;
-    wire hsync, vsync, blank;
+    //inputs and outputs
+    wire [10:0] hcount; //vga
+    wire [9:0] vcount; //vga
+    wire hsync, vsync, blank; //vga
+    
+    wire [11:0] p_rgb; //current output pixel
+    
+    wire [10:0] p_offset; //current player horizontal position (positive as wave moves left)
+    wire [9:0] p_vpos; //current player vertical position
+    wire [9:0] wave_prof[1023:0]; //current waveform profile
+    wire [9:0] prev_wave_prof[1023:0];
+    
+    wire [10:0] frequency;
+    assign frequency = 11'b0;
+    wire new_f;
+    assign new_f = 0;
+    wire wave_ready;
+    
+    reg [9:0] disp_wave;
+    reg wave_clk;
+    
+    
+    //parameters only for later calculations; do not change
+    parameter SCREEN_HEIGHT = 768;
+    parameter SCREEN_WIDTH = 1024;
+    
     xvga vga1(.vclock(clock_65mhz),.hcount(hcount),.vcount(vcount),
           .hsync(hsync),.vsync(vsync),.blank(blank));
+    
+    //wave_logic wave_logic(.reset(reset), .clock(clock_65mhz), .frequency(frequency), .new_f(new_f),
+    //                      .wave_prof(wave_prof), .prev_wave_prof(prev_wave_prof), .wave_ready(wave_ready));
+    
+    
+    display display(.reset(reset), .p_offset(p_offset), .p_vpos(p_vpos), .wave_prof(disp_wave), 
+                    .wave_clk(wave_clk), .vclock(clock_65mhz), .hcount(hcount), .vcount(vcount),
+                    .hsync(hsync), .vsync(vsync), .blank(blank), .p_rgb(p_rgb));
+    
+    
         
-    assign VGA_R = blank ? 0: {4{hcount[7]}};
-    assign VGA_G = blank ? 0: {4{hcount[6]}};
-    assign VGA_B = blank ? 0: {4{hcount[5]}};
+    assign VGA_R = blank ? 0: p_rgb[11:8];
+    assign VGA_G = blank ? 0: p_rgb[7:4];
+    assign VGA_B = blank ? 0: p_rgb[3:0];
     assign VGA_HS = ~hsync;
     assign VGA_VS = ~vsync;
     
