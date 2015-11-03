@@ -1,7 +1,7 @@
 // Copyright 1986-2014 Xilinx, Inc. All Rights Reserved.
 // --------------------------------------------------------------------------------
 // Tool Version: Vivado v.2014.4.1 (lin64) Build 1149489 Thu Feb 19 16:01:47 MST 2015
-// Date        : Tue Nov  3 14:51:17 2015
+// Date        : Tue Nov  3 17:32:35 2015
 // Host        : eecs-digital-52 running 64-bit Ubuntu 12.04.5 LTS
 // Command     : write_verilog -force -mode funcsim
 //               /afs/athena.mit.edu/user/v/y/vysarge/a/6.111/surfing-on-a-sine-wave/surfing-on-a-sine-wave/surfing-on-a-sine-wave.srcs/sources_1/ip/clk_wiz_0/clk_wiz_0_funcsim.v
