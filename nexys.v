@@ -36,15 +36,13 @@ module nexys(
    output[7:0] SEG,  // segments A-G (0-6), DP (7)
    output[7:0] AN    // Display 0-7
    );
-   
-    // 65MHz clock generation using DCM
-    wire clock_65mhz_unbuf,clock_65mhz;
-    DCM vclk1(.CLKIN(CLK100MHZ),.CLKFX(clock_65mhz_unbuf));
-    // synthesis attribute CLKFX_DIVIDE of vclk1 is 20
-    // synthesis attribute CLKFX_MULTIPLY of vclk1 is 13
-    // synthesis attribute CLK_FEEDBACK of vclk1 is NONE
-    // synthesis attribute CLKIN_PERIOD of vclk1 is 10
-    BUFG vclk2(.O(clock_65mhz),.I(clock_65mhz_unbuf));
+    
+    // 65MHz clock generation from IP
+    wire locked;
+    wire clock_65mhz;
+    reg reset;
+    clk_wiz_0_clk_wiz 65mhzgen(.clk_100mhz(CLK100MHZ), .clk_65mhz(clock_65mhz),
+     .reset(reset), .locked(locked));
 
 // create 25mhz system clock
     wire clock_25mhz;
@@ -95,5 +93,11 @@ module nexys(
     assign VGA_B = blank ? 0: {4{hcount[5]}};
     assign VGA_HS = ~hsync;
     assign VGA_VS = ~vsync;
+    
+    
+    initial begin
+        reset = 0;
+    end
+    
 endmodule
 
