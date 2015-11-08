@@ -37,32 +37,34 @@ module nexys(
    output[7:0] AN    // Display 0-7
    );
     
-    //reset signal
-    wire power_on_reset;    // remain high for first 16 clocks
-    SRL16 reset_sr (.D(1'b0), .CLK(CLK100MHZ), .Q(power_on_reset),
-               .A0(1'b1), .A1(1'b1), .A2(1'b1), .A3(1'b1));
-    defparam reset_sr.INIT = 16'hFFFF;
-    
-    //user reset
-    wire reset,user_reset;
-    debounce center(.reset(power_on_reset),.clock(CLK100MHZ),.noisy(BTNC),.clean(user_reset));
-    assign reset = user_reset | power_on_reset;
-    
-    
-    
     //65MHz clock generation from IP
     wire locked;
     wire clock_65mhz;
     clk_wiz_0 gen_65mhz(.clk_100mhz(CLK100MHZ), .clk_65mhz(clock_65mhz), .reset(reset), .locked(locked));
     
+    //reset signal
+    wire power_on_reset;    // remain high for first 16 clocks
+    SRL16 reset_sr (.D(1'b0), .CLK(clock_65mhz), .Q(power_on_reset),
+               .A0(1'b1), .A1(1'b1), .A2(1'b1), .A3(1'b1));
+    defparam reset_sr.INIT = 16'hFFFF;
+    
+    //user reset
+    wire reset,user_reset;
+    debounce center(.reset(power_on_reset),.clock(clock_65mhz),.noisy(BTNC),.clean(user_reset));
+    assign reset = user_reset | power_on_reset;
+    
+    
+    
+    
+    
 // create 25mhz system clock
-    wire clock_25mhz;
-    clock_quarter_divider clockgen(.clk100_mhz(CLK100MHZ), .clock_25mhz(clock_25mhz));
+    //wire clock_25mhz;
+    //clock_quarter_divider clockgen(.clk100_mhz(CLK100MHZ), .clock_25mhz(clock_25mhz));
 
 //  instantiate 7-segment display;  
     wire [31:0] data;
     wire [6:0] segments;
-    display_8hex display8hex(.clk(clock_25mhz),.data(data), .seg(segments), .strobe(AN));    
+    display_8hex display8hex(.clk(clock_65mhz),.data(data), .seg(segments), .strobe(AN));    
     assign SEG[6:0] = segments;
     assign SEG[7] = 1'b1;
 
