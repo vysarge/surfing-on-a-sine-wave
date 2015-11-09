@@ -12,9 +12,8 @@
 module display(input reset,
                input [10:0] p_offset, //horizontal offset
                input [9:0] p_vpos, //vertical position of character
+               input [1:0] char_frame, //frame of character; 0 = stationary, 1 = falling, 2 = rising
                input [9:0] wave_prof, //waveform profile
-               input [10:0] wave_index,
-               input wave_we, //write enable; wave data clocked by vclock
                input vclock, //65 mhz
                input [10:0] hcount, //0 at left
                input [9:0] vcount, //0 at top
@@ -27,10 +26,10 @@ module display(input reset,
     //storing inputs from last clock cycle
     reg [10:0] offset;
     reg [9:0] vpos;
-    reg [9:0] wave[1023:0];
-    reg [9:0] next_wave[1023:0];
-    reg [10:0] char_x;
-    reg char_frame;
+    //reg [9:0] wave[1023:0];
+    //reg [9:0] next_wave[1023:0];
+    //reg [10:0] char_x;
+    
     
     //sprite pixel outputs
     wire [11:0] character_rgb;
@@ -38,31 +37,28 @@ module display(input reset,
     wire [11:0] u_bg_rgb;
     
     //sprite declarations
-    sprite #(.WIDTH(20), .HEIGHT(10), .LOG_FRAMES(1)) character 
-                       (.vclock(vclock), .hcount(hcount), .x(char_x), .vcount(vcount),
+    sprite #(.WIDTH(20), .HEIGHT(20), .LOG_FRAMES(1)) character 
+                       (.vclock(vclock), .hcount(hcount), .x(offset), .vcount(vcount),
                        .y(vpos), .curr_frame(char_frame), .p_rgb(character_rgb)
                        );
     
     //background declarations
     background #(.ABOVE(0)) lower_background
-                (.vclock(vclock), .hcount(hcount), .vcount(vcount), .prof_hcount(wave[hcount[9:0]]), .p_rgb(l_bg_rgb));
+                (.vclock(vclock), .hcount(hcount), .vcount(vcount), .prof_hcount(wave_prof), .p_rgb(l_bg_rgb));
     
     background #(.ABOVE(1)) upper_background
-                (.vclock(vclock), .hcount(hcount), .vcount(vcount), .prof_hcount(wave[hcount[9:0]]), .p_rgb(u_bg_rgb));
+                (.vclock(vclock), .hcount(hcount), .vcount(vcount), .prof_hcount(wave_prof), .p_rgb(u_bg_rgb));
     
     initial begin //initial values
-        char_x = 0;
+        //char_x = 0;
         vpos = 384;
-        char_frame = 0;
+        //char_frame = 0;
     end
     
     //at each new frame
     reg [10:0] i;
     always @(negedge vsync) begin
         //update values
-        for (i = 0; i < 1024; i = i+1) begin
-            wave[i] <= next_wave[i];
-        end
         offset <= p_offset;
         vpos <= p_vpos;
         
@@ -71,15 +67,15 @@ module display(input reset,
     //at each pixel
     always @(posedge vclock) begin
         if (reset) begin //reset values
-            char_x <= 0;
-            char_frame <= 0;
+            //char_x <= 0;
+            //char_frame <= 0;
             p_rgb <= 0; //temporarily display black
         end
         else begin
             //shift in waveform data
-            if (wave_we) begin
-                next_wave[wave_index] <= wave_prof;
-            end
+            //if (wave_we) begin
+            //    next_wave[wave_index] <= wave_prof;
+            //end
             
             
             //if character data exists for this pixel
@@ -109,25 +105,104 @@ endmodule
 //    Produces the pixel as affected by a certain sprite
 //    
 //////////////////////////////////////////////////////////
-module sprite #(parameter WIDTH=10,
-                parameter HEIGHT=10,
+module sprite #(parameter WIDTH=20,
+                parameter HEIGHT=20,
                 parameter LOG_FRAMES=3)
                (input vclock,
                 input [10:0] hcount, x,
                 input [9:0] vcount, y,
+                input [2:0] s_type, //type of sprite: 0 is character sprite
                 input [LOG_FRAMES-1:0] curr_frame,
                 output reg [11:0] p_rgb
                 );
     
+    wire [10:0] p_x, p_y; //relative x or y within sprite bounds
+    wire within_limits; //1 if hcount and vcount currently within the sprite bounds
+    assign within_limits = (hcount < x + WIDTH) & (hcount > x) & (vcount < y + HEIGHT) & (vcount > y);
+    assign p_x = hcount - x;
+    assign p_y = vcount - y;
+    wire [11:0] p_rom; //output pixel from rom
+    
+    sprite_rom rom(.x(p_x), .y(p_y), .s_type(s_type), .frame(curr_frame), .pixel(p_rom));
     //on the rising edge of vclock
     always @(posedge vclock) begin
         
         //assign new pixel value
         if ((hcount < x + WIDTH) & (hcount > x) & (vcount < y + HEIGHT) & (vcount > y)) begin //if within box
-            p_rgb <= 12'h0F0; //for now, within the square is green
+            p_rgb <= p_rom; //for now, within the square is green
         end
         else begin //otherwise
             p_rgb <= 12'b0; //elsewhere is empty.
+        end
+    end
+    
+endmodule
+
+
+module sprite_rom #(parameter WIDTH = 20,
+                    parameter HEIGHT = 20,
+                    parameter LOG_FRAMES = 3)
+                   (input [4:0] x, //height and width are both 20
+                   input [4:0] y,
+                   input [2:0] s_type,
+                   input [LOG_FRAMES-1:0] frame,
+                   output reg [11:0]  pixel);
+    
+    reg[WIDTH*12-1:0] horiz; //a horizontal strip of pixels
+    always @(x, horiz) begin
+        case (x) 
+            5'b00000: pixel = horiz[239:228];
+            5'b00001: pixel = horiz[227:216];
+            5'b00010: pixel = horiz[215:204];
+            5'b00011: pixel = horiz[203:192];
+            5'b00100: pixel = horiz[191:180];
+            5'b00101: pixel = horiz[179:168];
+            5'b00110: pixel = horiz[167:156];
+            5'b00111: pixel = horiz[155:144];
+            5'b01000: pixel = horiz[143:132];
+            5'b01001: pixel = horiz[131:120];
+            5'b01010: pixel = horiz[119:108];
+            5'b01011: pixel = horiz[107:96];
+            5'b01100: pixel = horiz[95:84];
+            5'b01101: pixel = horiz[83:72];
+            5'b01110: pixel = horiz[71:60];
+            5'b01111: pixel = horiz[59:48];
+            5'b10000: pixel = horiz[47:36];
+            5'b10001: pixel = horiz[35:24];
+            5'b10010: pixel = horiz[23:12];
+            5'b10011: pixel = horiz[11:0];
+        endcase
+    end
+    
+    //for current x and y and frame, return the corresponding pixel value
+    always @(y, frame) begin
+        if (s_type == 0) begin
+            case ({frame,y})
+                8'b000_00000: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
+                8'b000_00001: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
+                8'b000_00010: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
+                8'b000_00011: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
+                8'b000_00100: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
+                8'b000_00101: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
+                8'b000_00110: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
+                8'b000_00111: horiz = 240'h000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000;
+                8'b000_01000: horiz = 240'h000_000_0F0_0F0_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000;
+                8'b000_01001: horiz = 240'h000_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000;
+                8'b000_01010: horiz = 240'h000_000_0F0_0F0_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000;
+                8'b000_01011: horiz = 240'h000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000;
+                8'b000_01100: horiz = 240'h000_000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000_000;
+                8'b000_01101: horiz = 240'h000_000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000_000;
+                8'b000_01110: horiz = 240'h000_000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000_000;
+                8'b000_01111: horiz = 240'h000_000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000_000;
+                8'b000_10000: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
+                8'b000_10001: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
+                8'b000_10010: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
+                8'b000_10011: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
+                default: horiz = 240'hF00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00;
+            endcase
+        end
+        else begin
+            horiz = 0;
         end
     end
     

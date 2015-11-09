@@ -38,19 +38,22 @@ module nexys(
    );
     
     //65MHz clock generation from IP
+    wire reset,user_reset;
+    reg clk_reset;
+    wire power_on_reset;    // remain high for first 16 clocks
     wire locked;
     wire clock_65mhz;
-    clk_wiz_0 gen_65mhz(.clk_100mhz(CLK100MHZ), .clk_65mhz(clock_65mhz), .reset(reset), .locked(locked));
+    wire clock_25mhz;
+    
+    clk_wiz_0 gen(.clk_100mhz(CLK100MHZ), .clk_65mhz(clock_65mhz), .clk_25mhz(clock_25mhz), .reset(clk_reset), .locked(locked));
     
     //reset signal
-    wire power_on_reset;    // remain high for first 16 clocks
-    SRL16 reset_sr (.D(1'b0), .CLK(clock_65mhz), .Q(power_on_reset),
+    SRL16 reset_sr (.D(1'b0), .CLK(clock_25mhz), .Q(power_on_reset),
                .A0(1'b1), .A1(1'b1), .A2(1'b1), .A3(1'b1));
     defparam reset_sr.INIT = 16'hFFFF;
     
     //user reset
-    wire reset,user_reset;
-    debounce center(.reset(power_on_reset),.clock(clock_65mhz),.noisy(BTNC),.clean(user_reset));
+    debounce center(.reset(power_on_reset),.clock(clock_25mhz),.noisy(BTNC),.clean(user_reset));
     assign reset = user_reset | power_on_reset;
     
     
@@ -58,13 +61,13 @@ module nexys(
     
     
 // create 25mhz system clock
-    //wire clock_25mhz;
+    
     //clock_quarter_divider clockgen(.clk100_mhz(CLK100MHZ), .clock_25mhz(clock_25mhz));
 
 //  instantiate 7-segment display;  
     wire [31:0] data;
     wire [6:0] segments;
-    display_8hex display8hex(.clk(clock_65mhz),.data(data), .seg(segments), .strobe(AN));    
+    display_8hex display8hex(.clk(clock_25mhz),.data(data), .seg(segments), .strobe(AN));    
     assign SEG[6:0] = segments;
     assign SEG[7] = 1'b1;
 
@@ -74,11 +77,9 @@ module nexys(
 
     //assign LED = SW;     
     assign JA[7:1] = 7'b0;
-    assign JA[0] = clock_65mhz;
+    assign JA[0] = clock_25mhz;
     //assign data = {28'h0123456, SW[3:0]};   // display 0123456 + SW
-    assign LED16_R = BTNL;                  // left button -> red led
-    assign LED16_G = BTNC;                  // center button -> green led
-    assign LED16_B = BTNR;                  // right button -> blue led
+
     assign LED17_R = BTNL;
     assign LED17_G = BTNC;
     assign LED17_B = BTNR; 
@@ -102,7 +103,12 @@ module nexys(
     //inputs and outputs
     wire [10:0] hcount; //vga
     wire [9:0] vcount; //vga
+    reg [10:0] prev_hcount;
+    reg [9:0] prev_vcount;
     wire hsync, vsync, blank; //vga
+    reg prev_hsync, prev_vsync, prev_blank; //previous values
+    reg prev2_hsync, prev2_vsync, prev2_blank; //previous previous values (for pipelining)
+    
     
     wire [11:0] p_rgb; //current output pixel
     
@@ -132,21 +138,35 @@ module nexys(
     wire right;
     
     //assigning buttons
-    debounce sw0(.reset(reset),.clock(clock_65mhz),.noisy(SW[0]),.clean(disp_sel));
-    debounce dbu(.reset(reset),.clock(clock_65mhz),.noisy(BTNU),.clean(up));
-    debounce dbd(.reset(reset),.clock(clock_65mhz),.noisy(BTND),.clean(down));
-    debounce dbl(.reset(reset),.clock(clock_65mhz),.noisy(BTNL),.clean(left));
-    debounce dbr(.reset(reset),.clock(clock_65mhz),.noisy(BTNR),.clean(right));
+    debounce sw0(.reset(reset),.clock(clock_25mhz),.noisy(SW[0]),.clean(disp_sel));
+    debounce dbu(.reset(reset),.clock(clock_25mhz),.noisy(BTNU),.clean(up));
+    debounce dbd(.reset(reset),.clock(clock_25mhz),.noisy(BTND),.clean(down));
+    debounce dbl(.reset(reset),.clock(clock_25mhz),.noisy(BTNL),.clean(left));
+    debounce dbr(.reset(reset),.clock(clock_25mhz),.noisy(BTNR),.clean(right));
     
+    
+    assign LED16_R = left;                  // left button -> red led
+    assign LED16_G = BTNC;                  // center button -> green led
+    assign LED16_B = right;                  // right button -> blue led
     
     initial begin
         p_vpos = 384;
         wave_index = 0;
     end
     
-    assign disp_wave = disp_sel ? wave_index[9:0] : 10'd384;
+    //it's quite important that prev_hcount be used here; otherwise there will be a horizontal offset
+    assign disp_wave = disp_sel ? prev_hcount[9:0] : 10'd384;
     
     always @(posedge clock_65mhz) begin
+        //updating previous variables
+        prev_hcount <= hcount;
+        prev_vcount <= vcount;
+        prev_vsync <= vsync;
+        prev_hsync <= hsync;
+        prev_blank <= blank;
+        prev2_vsync <= prev_vsync;
+        prev2_hsync <= prev_hsync;
+        prev2_blank <= prev_blank;
         prev_disp_sel <= disp_sel;
         prev_up <= up;
         prev_down <= down;
@@ -156,18 +176,18 @@ module nexys(
         
         
         if (prev_disp_sel != disp_sel) begin
-            wave_index <= 0;
-            wave_we <= 1;
+            //wave_index <= 0;
+            //wave_we <= 1;
         end
         else begin
-            if (wave_index < 1024) begin
+            /*if (wave_index < 1024) begin
                 wave_we <= 1;
                 wave_index <= wave_index + 1;
                 
             end
             else begin
                 wave_we <= 0;
-            end
+            end*/
             
             if ((up & !prev_up) & (p_vpos > 0)) begin
                 p_vpos <= p_vpos - 100;
@@ -191,23 +211,24 @@ module nexys(
     //                      .wave_prof(wave_prof), .prev_wave_prof(prev_wave_prof), .wave_ready(wave_ready));
     
     wire[9:0] vpos;
-    display display(.reset(reset), .p_offset(p_offset), .p_vpos(p_vpos), .wave_prof(disp_wave), .wave_index(wave_index),
-                    .wave_we(wave_we), .vclock(clock_65mhz), .hcount(hcount), .vcount(vcount),
+    display display(.reset(reset), .p_offset(p_offset), .p_vpos(p_vpos), .wave_prof(disp_wave), 
+                    .vclock(clock_65mhz), .hcount(hcount), .vcount(vcount),
                     .hsync(hsync), .vsync(vsync), .blank(blank), .p_rgb(p_rgb));
     
     
         
-    assign VGA_R = blank ? 0: p_rgb[11:8];
-    assign VGA_G = blank ? 0: p_rgb[7:4];
-    assign VGA_B = blank ? 0: p_rgb[3:0];
-    assign VGA_HS = ~hsync;
-    assign VGA_VS = ~vsync;
+    assign VGA_R = prev2_blank ? 0: p_rgb[11:8];
+    assign VGA_G = prev2_blank ? 0: p_rgb[7:4];
+    assign VGA_B = prev2_blank ? 0: p_rgb[3:0];
+    assign VGA_HS = ~prev2_hsync;
+    assign VGA_VS = ~prev2_vsync;
     
     //test outputs
     //assign data[11:0] = {1'b0, reset_count}; //last three digits disp_wave
     assign data[31:20] = {2'b0, p_vpos}; //first three digits wave_index
+    assign data[3:0] = 4'b1;
     assign LED[0] = 1;
-    assign LED[1] = up;
+    assign LED[1] = 1;//up;
     assign LED[2] = down;
     
 endmodule

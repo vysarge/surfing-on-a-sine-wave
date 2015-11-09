@@ -55,7 +55,8 @@
 //  Output     Output      Phase    Duty Cycle   Pk-to-Pk     Phase
 //   Clock     Freq (MHz)  (degrees)    (%)     Jitter (ps)  Error (ps)
 //----------------------------------------------------------------------------
-// CLK_OUT1____65.000______0.000______50.0______254.866____297.890
+// CLK_OUT1____65.000______0.000______50.0______142.278_____99.281
+// CLK_OUT2____25.000______0.000______50.0______174.188_____99.281
 //
 //----------------------------------------------------------------------------
 // Input Clock   Freq (MHz)    Input Jitter (UI)
@@ -69,6 +70,7 @@ module clk_wiz_0_clk_wiz
   input         clk_100mhz,
   // Clock out ports
   output        clk_65mhz,
+  output        clk_25mhz,
   // Status and control signals
   input         reset,
   output        locked
@@ -84,6 +86,7 @@ module clk_wiz_0_clk_wiz
 
   // Clocking PRIMITIVE
   //------------------------------------
+
   // Instantiation of the MMCM PRIMITIVE
   //    * Unused inputs are tied off
   //    * Unused outputs are labeled unused
@@ -95,7 +98,6 @@ module clk_wiz_0_clk_wiz
   wire        clkfbout_buf_clk_wiz_0;
   wire        clkfboutb_unused;
     wire clkout0b_unused;
-   wire clkout1_unused;
    wire clkout1b_unused;
    wire clkout2_unused;
    wire clkout2b_unused;
@@ -113,14 +115,18 @@ module clk_wiz_0_clk_wiz
     .CLKOUT4_CASCADE      ("FALSE"),
     .COMPENSATION         ("ZHOLD"),
     .STARTUP_WAIT         ("FALSE"),
-    .DIVCLK_DIVIDE        (5),
-    .CLKFBOUT_MULT_F      (50.375),
+    .DIVCLK_DIVIDE        (1),
+    .CLKFBOUT_MULT_F      (9.750),
     .CLKFBOUT_PHASE       (0.000),
     .CLKFBOUT_USE_FINE_PS ("FALSE"),
-    .CLKOUT0_DIVIDE_F     (15.500),
+    .CLKOUT0_DIVIDE_F     (15.000),
     .CLKOUT0_PHASE        (0.000),
     .CLKOUT0_DUTY_CYCLE   (0.500),
     .CLKOUT0_USE_FINE_PS  ("FALSE"),
+    .CLKOUT1_DIVIDE       (39),
+    .CLKOUT1_PHASE        (0.000),
+    .CLKOUT1_DUTY_CYCLE   (0.500),
+    .CLKOUT1_USE_FINE_PS  ("FALSE"),
     .CLKIN1_PERIOD        (10.0))
   mmcm_adv_inst
     // Output clocks
@@ -129,7 +135,7 @@ module clk_wiz_0_clk_wiz
     .CLKFBOUTB           (clkfboutb_unused),
     .CLKOUT0             (clk_65mhz_clk_wiz_0),
     .CLKOUT0B            (clkout0b_unused),
-    .CLKOUT1             (clkout1_unused),
+    .CLKOUT1             (clk_25mhz_clk_wiz_0),
     .CLKOUT1B            (clkout1b_unused),
     .CLKOUT2             (clkout2_unused),
     .CLKOUT2B            (clkout2b_unused),
@@ -181,6 +187,10 @@ module clk_wiz_0_clk_wiz
    (.O   (clk_65mhz),
     .I   (clk_65mhz_clk_wiz_0));
 
+
+  BUFG clkout2_buf
+   (.O   (clk_25mhz),
+    .I   (clk_25mhz_clk_wiz_0));
 
 
 
