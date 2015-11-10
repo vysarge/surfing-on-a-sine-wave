@@ -117,6 +117,10 @@ module nexys(
     reg [9:0] wave_prof[1023:0]; //current waveform profile
     reg [9:0] prev_wave_prof[1023:0];
     
+    //object data registers; see display module for details
+    reg [25:0] obj1, obj2, obj3, obj4, obj5;
+    reg [2:0] obj_frame_counter;
+    
     wire [10:0] frequency;
     assign frequency = 11'b0;
     wire new_f;
@@ -152,6 +156,13 @@ module nexys(
     initial begin
         p_vpos = 384;
         wave_index = 0;
+        
+        obj1 = 25'b000_00_00100000000_0100000000;
+        obj2 = 0;
+        obj3 = 0;
+        obj4 = 0;
+        obj5 = 0;
+        obj_frame_counter = 0;
     end
     
     
@@ -163,6 +174,12 @@ module nexys(
         end
         else begin
             p_offset <= 0;
+        end
+        
+        //increment frame counter so that obj appears to rotate roughly once a second
+        obj_frame_counter <= obj_frame_counter + 1; //3 bits; changes display frame once every 8 vga frames
+        if (obj_frame_counter == 0) begin
+            obj1[25:23] <= obj1[25:23] + 1;
         end
     end
     
@@ -226,6 +243,7 @@ module nexys(
     wire[9:0] vpos;
     display display(.reset(reset), .p_offset(p_offset), .p_vpos(p_vpos), .char_frame(SW[2:1]), .wave_prof(disp_wave), 
                     .vclock(clock_65mhz), .hcount(hcount), .vcount(vcount),
+                    .p_obj1(obj1), .p_obj2(obj2), .p_obj3(obj3), .p_obj4(obj4), .p_obj5(obj5),
                     .hsync(hsync), .vsync(vsync), .blank(blank), .p_rgb(p_rgb));
     
     
@@ -239,7 +257,7 @@ module nexys(
     //test outputs
     //assign data[11:0] = {1'b0, reset_count}; //last three digits disp_wave
     assign data[31:20] = {2'b0, p_vpos}; //first three digits wave_index
-    assign data[3:0] = 4'b1;
+    assign data[3:0] = {1'b0,obj1[25:23]};
     assign LED[0] = 1;
     assign LED[1] = 1;//up;
     assign LED[2] = down;

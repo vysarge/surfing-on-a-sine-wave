@@ -14,6 +14,11 @@ module display(input reset,
                input [9:0] p_vpos, //vertical position of character
                input [1:0] char_frame, //frame of character; 0 = stationary, 1 = rising, 2 = falling
                input [9:0] wave_prof, //waveform profile
+               input [25:0] p_obj1, //25:23 frame, 22:21 identity, 20:10 horizontal position, 9:0 vertical position
+               input [25:0] p_obj2, //identity 0, collectable
+               input [25:0] p_obj3, //if 26'b0, disregard and render nothing.
+               input [25:0] p_obj4, //thus a maximum of 5 objects may be on screen at one time.
+               input [25:0] p_obj5,
                input vclock, //65 mhz
                input [10:0] hcount, //0 at left
                input [9:0] vcount, //0 at top
@@ -26,21 +31,36 @@ module display(input reset,
     //storing inputs from last clock cycle
     reg [10:0] offset;
     reg [9:0] vpos;
-    //reg [9:0] wave[1023:0];
-    //reg [9:0] next_wave[1023:0];
-    //reg [10:0] char_x;
-    
+    reg [25:0] obj1;
+    reg [25:0] obj2;
+    reg [25:0] obj3;
+    reg [25:0] obj4;
+    reg [25:0] obj5;
     
     //sprite pixel outputs
     wire [11:0] character_rgb;
+    wire [11:0] obj1_rgb;
+    wire [11:0] obj2_rgb;
+    wire [11:0] obj3_rgb;
+    wire [11:0] obj4_rgb;
+    wire [11:0] obj5_rgb;
     wire [11:0] l_bg_rgb;
     wire [11:0] u_bg_rgb;
     
     //sprite declarations
-    sprite #(.WIDTH(20), .HEIGHT(20), .LOG_FRAMES(2)) character 
+    //character
+    sprite #(.WIDTH(20), .HEIGHT(20), .LOG_FRAMES(3)) character 
                        (.vclock(vclock), .hcount(hcount), .x(0), .vcount(vcount),
-                       .y(vpos), .curr_frame(char_frame), .p_rgb(character_rgb)
+                       .y(vpos), .s_type(3'b100), .curr_frame(char_frame), .p_rgb(character_rgb)
                        );
+    
+    //collectables
+    sprite #(.WIDTH(15), .HEIGHT(16), .LOG_FRAMES(3)) object1
+                           (.vclock(vclock), .hcount(hcount), .x(obj1[20:10]), .vcount(vcount),
+                           .y(obj1[9:0]), .s_type(obj1[22:21]), .curr_frame(obj1[25:23]), .p_rgb(obj1_rgb)
+                           );
+    
+    
     
     //background declarations
     background #(.ABOVE(0)) lower_background
@@ -61,6 +81,11 @@ module display(input reset,
         //update values
         offset <= p_offset;
         vpos <= p_vpos;
+        obj1 <= p_obj1;
+        obj2 <= p_obj2;
+        obj3 <= p_obj3;
+        obj4 <= p_obj4;
+        obj5 <= p_obj5;
         
     end
     
@@ -81,6 +106,9 @@ module display(input reset,
             //if character data exists for this pixel
             if(character_rgb) begin //use that
                 p_rgb <= character_rgb;
+            end
+            else if(obj1 && obj1_rgb) begin //otherwise use collectable data
+                p_rgb <= obj1_rgb;
             end
             else if (l_bg_rgb) begin //otherwise use lower background data
                 p_rgb <= l_bg_rgb;
@@ -118,136 +146,21 @@ module sprite #(parameter WIDTH=20,
     
     wire [10:0] p_x, p_y; //relative x or y within sprite bounds
     wire within_limits; //1 if hcount and vcount currently within the sprite bounds
-    assign within_limits = (hcount < x + WIDTH) & (hcount > x) & (vcount < y + HEIGHT) & (vcount > y);
+    assign within_limits = (hcount < x + WIDTH) & (hcount >= x) & (vcount < y + HEIGHT) & (vcount >= y);
     assign p_x = hcount - x;
     assign p_y = vcount - y;
     wire [11:0] p_rom; //output pixel from rom
     
-    sprite_rom #(.WIDTH(20),.HEIGHT(20),.LOG_FRAMES(2)) rom (.x(p_x), .y(p_y), .s_type(s_type), .frame(curr_frame), .pixel(p_rom));
+    sprite_rom #(.WIDTH(WIDTH),.HEIGHT(HEIGHT),.LOG_FRAMES(LOG_FRAMES)) rom (.x(p_x), .y(p_y), .s_type(s_type), .frame(curr_frame), .pixel(p_rom));
     //on the rising edge of vclock
     always @(posedge vclock) begin
         
         //assign new pixel value
-        if ((hcount < x + WIDTH) & (hcount > x) & (vcount < y + HEIGHT) & (vcount > y)) begin //if within box
+        if (within_limits) begin //if within box
             p_rgb <= p_rom; //for now, within the square is green
         end
         else begin //otherwise
-            p_rgb <= 12'b0; //elsewhere is empty.
-        end
-    end
-    
-endmodule
-
-
-module sprite_rom #(parameter WIDTH = 20,
-                    parameter HEIGHT = 20,
-                    parameter LOG_FRAMES = 3)
-                   (input [4:0] x, //height and width are both 20
-                   input [4:0] y,
-                   input [2:0] s_type,
-                   input [LOG_FRAMES-1:0] frame,
-                   output reg [11:0]  pixel);
-    
-    reg[WIDTH*12-1:0] horiz; //a horizontal strip of pixels
-    //selects the correct pixel from the horizontal strip
-    always @(x, horiz) begin
-        case (x) 
-            5'b00000: pixel = horiz[239:228];
-            5'b00001: pixel = horiz[227:216];
-            5'b00010: pixel = horiz[215:204];
-            5'b00011: pixel = horiz[203:192];
-            5'b00100: pixel = horiz[191:180];
-            5'b00101: pixel = horiz[179:168];
-            5'b00110: pixel = horiz[167:156];
-            5'b00111: pixel = horiz[155:144];
-            5'b01000: pixel = horiz[143:132];
-            5'b01001: pixel = horiz[131:120];
-            5'b01010: pixel = horiz[119:108];
-            5'b01011: pixel = horiz[107:96];
-            5'b01100: pixel = horiz[95:84];
-            5'b01101: pixel = horiz[83:72];
-            5'b01110: pixel = horiz[71:60];
-            5'b01111: pixel = horiz[59:48];
-            5'b10000: pixel = horiz[47:36];
-            5'b10001: pixel = horiz[35:24];
-            5'b10010: pixel = horiz[23:12];
-            5'b10011: pixel = horiz[11:0];
-        endcase
-    end
-    
-    //for current y and frame, return the corresponding pixel strip
-    always @(y, frame) begin
-        if (s_type == 0) begin
-            case ({frame,y})
-                8'b000_00000: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b000_00001: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b000_00010: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b000_00011: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b000_00100: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b000_00101: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b000_00110: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b000_00111: horiz = 240'h000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000;
-                8'b000_01000: horiz = 240'h000_000_0F0_0F0_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000;
-                8'b000_01001: horiz = 240'h000_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000;
-                8'b000_01010: horiz = 240'h000_000_0F0_0F0_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000;
-                8'b000_01011: horiz = 240'h000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000;
-                8'b000_01100: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b000_01101: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b000_01110: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b000_01111: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b000_10000: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b000_10001: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b000_10010: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b000_10011: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                
-                8'b001_00000: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b001_00001: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b001_00010: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b001_00011: horiz = 240'h000_000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000_000;
-                8'b001_00100: horiz = 240'h000_000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000_000;
-                8'b001_00101: horiz = 240'h000_000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000_000;
-                8'b001_00110: horiz = 240'h000_000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000_000;
-                8'b001_00111: horiz = 240'h000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000;
-                8'b001_01000: horiz = 240'h000_000_0F0_0F0_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000;
-                8'b001_01001: horiz = 240'h000_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000;
-                8'b001_01010: horiz = 240'h000_000_0F0_0F0_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000;
-                8'b001_01011: horiz = 240'h000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000;
-                8'b001_01100: horiz = 240'h000_000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000_000;
-                8'b001_01101: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b001_01110: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b001_01111: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b001_10000: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b001_10001: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b001_10010: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b001_10011: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                
-                8'b010_00000: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b010_00001: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b010_00010: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b010_00011: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b010_00100: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b010_00101: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b010_00110: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b010_00111: horiz = 240'h000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000;
-                8'b010_01000: horiz = 240'h000_000_0F0_0F0_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000;
-                8'b010_01001: horiz = 240'h000_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000;
-                8'b010_01010: horiz = 240'h000_000_0F0_0F0_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000;
-                8'b010_01011: horiz = 240'h000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000;
-                8'b010_01100: horiz = 240'h000_000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000_000;
-                8'b010_01101: horiz = 240'h000_000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000_000;
-                8'b010_01110: horiz = 240'h000_000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000_000;
-                8'b010_01111: horiz = 240'h000_000_000_000_000_000_000_0F0_0F0_0F0_0F0_0F0_0F0_000_000_000_000_000_000_000;
-                8'b010_10000: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b010_10001: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b010_10010: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                8'b010_10011: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
-                
-                
-                default: horiz = 240'hF00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00;
-            endcase
-        end
-        else begin
-            horiz = 0;
+            p_rgb <= 12'h000; //elsewhere is empty.
         end
     end
     
