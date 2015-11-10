@@ -154,6 +154,19 @@ module nexys(
         wave_index = 0;
     end
     
+    
+    //each frame
+    always @(posedge vsync) begin
+        //for testing purposes, constantly step p_offset by one
+        if (p_offset < SCREEN_WIDTH) begin
+            p_offset <= p_offset + 1;
+        end
+        else begin
+            p_offset <= 0;
+        end
+    end
+    
+    
     //it's quite important that prev_hcount be used here; otherwise there will be a horizontal offset
     assign disp_wave = disp_sel ? prev_hcount[9:0] : 10'd384;
     
@@ -211,7 +224,7 @@ module nexys(
     //                      .wave_prof(wave_prof), .prev_wave_prof(prev_wave_prof), .wave_ready(wave_ready));
     
     wire[9:0] vpos;
-    display display(.reset(reset), .p_offset(p_offset), .p_vpos(p_vpos), .wave_prof(disp_wave), 
+    display display(.reset(reset), .p_offset(p_offset), .p_vpos(p_vpos), .char_frame(SW[2:1]), .wave_prof(disp_wave), 
                     .vclock(clock_65mhz), .hcount(hcount), .vcount(vcount),
                     .hsync(hsync), .vsync(vsync), .blank(blank), .p_rgb(p_rgb));
     
