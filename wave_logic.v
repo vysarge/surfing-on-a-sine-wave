@@ -1,53 +1,95 @@
 `timescale 1ns / 1ps
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 
+// Wave computation module.
+// 
+// Instructions for use:
+//          1. Input frequency id and pulse new_f high for one clock cycle.  0 is lowest, 24 is highest.
+//          2. wave_ready asserted for one clock cycle when computation has finished and values can be read from the module.
+//          3. To read a value, set index and read wave_height after a clock cycle has passed.
+// 
 module wave_logic #(parameter LOG_WIDTH=10, //log of horizontal values
-                    parameter WIDTH=1024, //actual number of horizontal values
-                    parameter RESOL=10, //log resolution of vertical outputs
-                    parameter BASE_FREQ=220 //lowest possible frequency
+                    parameter WIDTH=1024 //actual number of horizontal values
                     )
                    (input reset,
                     input clock,
-                    input [10:0] frequency, //current frequency input
+                    input [4:0] freq_id, //current frequency id input, 0 to 24, 0 being lowest
                     input new_f, //pulses high for one clock cycle when a new frequency is input
-                    //output reg [RESOL-1:0] wave_prof [WIDTH-1:0], //wave profile output
-                    //output reg [RESOL-1:0] prev_wave_prof [WIDTH-1:0],
+                    input [10:0] index, //horizontal input index
+                    output [9:0] wave_height, //waveform height at index
                     output reg wave_ready //goes high for one clock cycle when wave profile calculation is done
                     );
     
     //set up sine rom
+    wire [10:0] freq_out; 
     reg [10:0] c_freq; //current frequency during calculation
-    reg [LOG_WIDTH-1:0] out_index;
-    wire [LOG_WIDTH-1:0] index;
-    wire [RESOL-1:0] value;
-    sine_rom s_rom(.index(index), .value(value));
-    freq_div #(.BASE_FREQ(BASE_FREQ)) fd (.out_index(out_index), .c_freq(c_freq), .index(index));
+    wire [9:0] c_value; //current value output from rom
+    reg [10:0] c_index;
+    reg [9:0] waveform [1023:0]; //full waveform profile, with any applied transforms etc
+    reg [10:0] index_counter; // current index (filling waveform)
+    
+    wave_rom wr(.index(c_index), .freq_id(freq_id), .value(c_value), .freq(freq_out));
+    
+    assign wave_height = waveform[index[9:0]];
+    
+    //pipelining semaphore
+    reg filling_waveform;
+    reg prev_filling_waveform;
+    
+    initial begin //initial values for simulation
+        index_counter = 0;
+        filling_waveform = 0;
+    end
     
     always @(posedge clock) begin
+        //keeping track
+        prev_filling_waveform <= filling_waveform;
+        
+        
         if (reset) begin //reset values
-            out_index <= 0;
-            c_freq <= 0;
+            c_freq <= 256;
             wave_ready <= 0;
+            filling_waveform <= 0;
         end
-        else if (new_f) begin //if a new frequency input is there
-            out_index <= 1;  //get ready to calculate
-            c_freq <= frequency; //set frequency
-            //wave_prof[0] <= 0; //0th entry is always 0
+        else if (new_f) begin //if a new frequency id input is there, rom performing calculation this cycle
+            filling_waveform <= 1; //set flag; time to fill waveform array
             wave_ready <= 0;
-            //prev_wave_prof[WIDTH-1:0] <= wave_prof[WIDTH-1:0]; //shift previous values
-        end
-        else if ((out_index > 0) & (out_index < WIDTH)) begin //while calculating
-            out_index <= out_index + 1; //increment index
-            //wave_prof[out_index] <= value; //shift in current value
             
-            if (out_index == WIDTH-1) begin //if done
-                wave_ready <= 1; //assert wave_ready
-            end
-            else begin //otherwise
+        end
+        else if (filling_waveform) begin //actual frequency value here.  Fill one slot in waveform array this cycle.
+            //if first cycle of filling
+            if (prev_filling_waveform == 0) begin
+                c_freq <= freq_out; //store current frequency
+                index_counter <= 0;
+                c_index <= 0;
                 wave_ready <= 0;
             end
+            else begin
+                if (c_index < 512) begin
+                    waveform[index_counter] <= (c_value>>2)+384; //fill one slot
+                end
+                else begin
+                    waveform[index_counter] <= 384-(c_value>>2); //fill one slot
+                end
+                
+                
+                if (index_counter >= 1023) begin //if done filling now
+                    wave_ready <= 1;
+                    filling_waveform <= 0; //set flags
+                end
+                else begin //otherwise keep going
+                    filling_waveform <= 1;
+                    wave_ready <= 0;
+                    index_counter <= index_counter+1; //increment counter
+                    c_index[9:0] <= ((index_counter+1) * (c_freq)) >> 8; //c_index is used to read values from rom
+                end
+            end
+            
+            
         end
         else begin //if index is 0
-            out_index <= 0;
+            filling_waveform <= 0;
             wave_ready <= 0; //deassert wave_ready after one clock cycle
         end
     end
@@ -56,37 +98,3 @@ module wave_logic #(parameter LOG_WIDTH=10, //log of horizontal values
 endmodule
 
 
-
-
-module sine_rom #(parameter LOG_VALUES=10,
-                  parameter VALUES=1024,
-                  parameter RESOL=10)
-                 (input [LOG_VALUES-1:0] index,
-                  output reg [RESOL-1:0] value
-                  );
-    
-    //rom
-    always @(index) begin
-        
-        case(index)
-            default: value = 0;
-        endcase
-    end
-    
-    
-    
-endmodule
-
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//temporary placeholder
-module freq_div #(parameter LOG_WIDTH = 10,
-                  parameter BASE_FREQ = 220
-                  )
-                 (input[LOG_WIDTH-1:0] out_index, //index of current frequency waveform
-                  input [10:0] c_freq, //current frequency
-                  output[LOG_WIDTH-1:0] index //index of base frequency waveform
-                  );
-    assign index = out_index;
-endmodule

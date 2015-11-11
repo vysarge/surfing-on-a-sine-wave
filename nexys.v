@@ -107,8 +107,12 @@ module nexys(
     reg [9:0] prev_vcount;
     wire hsync, vsync, blank; //vga
     reg prev_hsync, prev_vsync, prev_blank; //previous values
+    reg [10:0] prev2_hcount;
+    reg [9:0] prev2_vcount;
     reg prev2_hsync, prev2_vsync, prev2_blank; //previous previous values (for pipelining)
-    
+    reg [10:0] prev3_hcount;
+    reg [9:0] prev3_vcount;
+    reg prev3_hsync, prev3_vsync, prev3_blank; //etc
     
     wire [11:0] p_rgb; //current output pixel
     
@@ -121,10 +125,10 @@ module nexys(
     reg [25:0] obj1, obj2, obj3, obj4, obj5;
     reg [2:0] obj_frame_counter;
     
-    wire [10:0] frequency;
-    assign frequency = 11'b0;
-    wire new_f;
-    assign new_f = 0;
+    wire [4:0] freq_id;
+    assign freq_id = SW[15:11];
+    reg new_f;
+    
     wire wave_ready;
     
     
@@ -185,7 +189,7 @@ module nexys(
     
     
     //it's quite important that prev_hcount be used here; otherwise there will be a horizontal offset
-    assign disp_wave = disp_sel ? prev_hcount[9:0] : 10'd384;
+    //assign disp_wave = disp_sel ? prev_hcount[9:0] : 10'd384;
     
     always @(posedge clock_65mhz) begin
         //updating previous variables
@@ -194,9 +198,16 @@ module nexys(
         prev_vsync <= vsync;
         prev_hsync <= hsync;
         prev_blank <= blank;
+        prev2_hcount <= prev_hcount;
+        prev2_vcount <= prev_vcount;
         prev2_vsync <= prev_vsync;
         prev2_hsync <= prev_hsync;
         prev2_blank <= prev_blank;
+        prev3_hcount <= prev2_hcount;
+        prev3_vcount <= prev2_vcount;
+        prev3_vsync <= prev2_vsync;
+        prev3_hsync <= prev2_hsync;
+        prev3_blank <= prev2_blank;
         prev_disp_sel <= disp_sel;
         prev_up <= up;
         prev_down <= down;
@@ -204,8 +215,21 @@ module nexys(
         prev_right <= right;
         
         
+        //flash new_f when SW0 goes high
+        if (disp_sel & (prev_disp_sel == 0)) begin
+            new_f <= 1;
+        end
+        else begin
+            new_f <= 0;
+        end
         
-        if (prev_disp_sel != disp_sel) begin
+        
+        //update player position
+        if (prev2_hcount == 0) begin
+            p_vpos <= disp_wave - 10; 
+        end
+        
+        /*if (prev_disp_sel != disp_sel) begin
             //wave_index <= 0;
             //wave_we <= 1;
         end
@@ -219,7 +243,7 @@ module nexys(
                 wave_we <= 0;
             end*/
             
-            if ((up & !prev_up) & (p_vpos > 0)) begin
+            /*if ((up & !prev_up) & (p_vpos > 0)) begin
                 p_vpos <= p_vpos - 100;
             end
             else if ((down & !prev_down) & (p_vpos < SCREEN_HEIGHT-1)) begin
@@ -228,7 +252,7 @@ module nexys(
             else begin
                 p_vpos <= p_vpos;
             end
-        end
+        end*/
         
     end
     
@@ -240,19 +264,31 @@ module nexys(
     //wave_logic wave_logic(.reset(reset), .clock(clock_65mhz), .frequency(frequency), .new_f(new_f),
     //                      .wave_prof(wave_prof), .prev_wave_prof(prev_wave_prof), .wave_ready(wave_ready));
     
-    wire[9:0] vpos;
+    wire [10:0] p_index;
+    assign p_index = hcount + p_offset;
+    wave_logic wave_logic(.reset(reset), .clock(clock_65mhz), .freq_id(freq_id), .new_f(new_f), .index(p_index),
+                          .wave_height(disp_wave), .wave_ready(wave_ready));
+    
+    
+    
+    
+    
+    
+    
+    
+    //wire[9:0] vpos;
     display display(.reset(reset), .p_offset(p_offset), .p_vpos(p_vpos), .char_frame(SW[2:1]), .wave_prof(disp_wave), 
-                    .vclock(clock_65mhz), .hcount(hcount), .vcount(vcount),
+                    .vclock(clock_65mhz), .hcount(prev_hcount), .vcount(prev_vcount),
                     .p_obj1(obj1), .p_obj2(obj2), .p_obj3(obj3), .p_obj4(obj4), .p_obj5(obj5),
-                    .hsync(hsync), .vsync(vsync), .blank(blank), .p_rgb(p_rgb));
+                    .hsync(prev_hsync), .vsync(prev_vsync), .blank(prev_blank), .p_rgb(p_rgb));
     
     
-        
-    assign VGA_R = prev2_blank ? 0: p_rgb[11:8];
-    assign VGA_G = prev2_blank ? 0: p_rgb[7:4];
-    assign VGA_B = prev2_blank ? 0: p_rgb[3:0];
-    assign VGA_HS = ~prev2_hsync;
-    assign VGA_VS = ~prev2_vsync;
+    
+    assign VGA_R = prev3_blank ? 0: p_rgb[11:8];
+    assign VGA_G = prev3_blank ? 0: p_rgb[7:4];
+    assign VGA_B = prev3_blank ? 0: p_rgb[3:0];
+    assign VGA_HS = ~prev3_hsync;
+    assign VGA_VS = ~prev3_vsync;
     
     //test outputs
     //assign data[11:0] = {1'b0, reset_count}; //last three digits disp_wave

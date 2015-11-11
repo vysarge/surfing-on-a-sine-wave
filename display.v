@@ -31,33 +31,25 @@ module display(input reset,
     //storing inputs from last clock cycle
     reg [10:0] offset;
     reg [9:0] vpos;
-    reg [25:0] obj1;
-    reg [25:0] obj2;
-    reg [25:0] obj3;
-    reg [25:0] obj4;
-    reg [25:0] obj5;
+    reg [25:0] obj[4:0];
     
     //sprite pixel outputs
     wire [11:0] character_rgb;
-    wire [11:0] obj1_rgb;
-    wire [11:0] obj2_rgb;
-    wire [11:0] obj3_rgb;
-    wire [11:0] obj4_rgb;
-    wire [11:0] obj5_rgb;
+    wire [11:0] obj_rgb[4:0];
     wire [11:0] l_bg_rgb;
     wire [11:0] u_bg_rgb;
     
     //sprite declarations
     //character
-    sprite #(.WIDTH(20), .HEIGHT(20), .LOG_FRAMES(3)) character 
+    char_sprite #(.WIDTH(20), .HEIGHT(20), .LOG_FRAMES(3)) character 
                        (.vclock(vclock), .hcount(hcount), .x(0), .vcount(vcount),
-                       .y(vpos), .s_type(3'b100), .curr_frame(char_frame), .p_rgb(character_rgb)
+                       .y(vpos), .curr_frame(char_frame), .p_rgb(character_rgb)
                        );
     
     //collectables
-    sprite #(.WIDTH(15), .HEIGHT(16), .LOG_FRAMES(3)) object1
-                           (.vclock(vclock), .hcount(hcount), .x(obj1[20:10]), .vcount(vcount),
-                           .y(obj1[9:0]), .s_type(obj1[22:21]), .curr_frame(obj1[25:23]), .p_rgb(obj1_rgb)
+    coll_sprite #(.WIDTH(15), .HEIGHT(16), .LOG_FRAMES(3)) object1
+                           (.vclock(vclock), .hcount(hcount), .x(obj[0][20:10]), .vcount(vcount),
+                           .y(obj[0][9:0]), .s_type(obj[0][22:21]), .curr_frame(obj[0][25:23]), .p_rgb(obj_rgb[0])
                            );
     
     
@@ -81,11 +73,11 @@ module display(input reset,
         //update values
         offset <= p_offset;
         vpos <= p_vpos;
-        obj1 <= p_obj1;
-        obj2 <= p_obj2;
-        obj3 <= p_obj3;
-        obj4 <= p_obj4;
-        obj5 <= p_obj5;
+        obj[0] <= p_obj1;
+        obj[1] <= p_obj2;
+        obj[2] <= p_obj3;
+        obj[3] <= p_obj4;
+        obj[4] <= p_obj5;
         
     end
     
@@ -107,8 +99,8 @@ module display(input reset,
             if(character_rgb) begin //use that
                 p_rgb <= character_rgb;
             end
-            else if(obj1 && obj1_rgb) begin //otherwise use collectable data
-                p_rgb <= obj1_rgb;
+            else if(obj[0] && obj_rgb[0]) begin //otherwise use collectable data
+                p_rgb <= obj_rgb[0];
             end
             else if (l_bg_rgb) begin //otherwise use lower background data
                 p_rgb <= l_bg_rgb;
@@ -117,7 +109,7 @@ module display(input reset,
                 p_rgb <= u_bg_rgb; //otherwise use upper background data
             end
             else begin //if no data exists for this pixel
-                p_rgb <= 12'hF00; //default display red
+                p_rgb <= 12'hF0F; //default display magenta
             end
         end
         
@@ -130,16 +122,16 @@ endmodule
 
 //////////////////////////////////////////////////////////
 //    
-//    Produces the pixel as affected by a certain sprite
+//    Produces the pixel as affected by a collectable sprite
 //    
 //////////////////////////////////////////////////////////
-module sprite #(parameter WIDTH=20,
-                parameter HEIGHT=20,
+module coll_sprite #(parameter WIDTH=15,
+                parameter HEIGHT=16,
                 parameter LOG_FRAMES=3)
                (input vclock,
                 input [10:0] hcount, x,
                 input [9:0] vcount, y,
-                input [2:0] s_type, //type of sprite: 0 is character sprite
+                input [2:0] s_type, //type of sprite: 0 is coin sprite
                 input [LOG_FRAMES-1:0] curr_frame,
                 output reg [11:0] p_rgb
                 );
@@ -151,7 +143,47 @@ module sprite #(parameter WIDTH=20,
     assign p_y = vcount - y;
     wire [11:0] p_rom; //output pixel from rom
     
-    sprite_rom #(.WIDTH(WIDTH),.HEIGHT(HEIGHT),.LOG_FRAMES(LOG_FRAMES)) rom (.x(p_x), .y(p_y), .s_type(s_type), .frame(curr_frame), .pixel(p_rom));
+    
+    collectable_rom #(.WIDTH(WIDTH),.HEIGHT(HEIGHT),.LOG_FRAMES(LOG_FRAMES)) rom (.x(p_x), .y(p_y), .s_type(s_type), .frame(curr_frame), .pixel(p_rom));
+    //on the rising edge of vclock
+    always @(posedge vclock) begin
+        
+        //assign new pixel value
+        if (within_limits) begin //if within box
+            p_rgb <= p_rom; //for now, within the square is green
+        end
+        else begin //otherwise
+            p_rgb <= 12'h000; //elsewhere is empty.
+        end
+    end
+    
+endmodule
+
+
+//////////////////////////////////////////////////////////
+//    
+//    Produces the pixel as affected by a character sprite
+//    
+//////////////////////////////////////////////////////////
+module char_sprite #(parameter WIDTH=20,
+                parameter HEIGHT=20,
+                parameter LOG_FRAMES=3)
+               (input vclock,
+                input [10:0] hcount, x,
+                input [9:0] vcount, y,
+                input [LOG_FRAMES-1:0] curr_frame,
+                output reg [11:0] p_rgb
+                );
+    
+    wire [10:0] p_x, p_y; //relative x or y within sprite bounds
+    wire within_limits; //1 if hcount and vcount currently within the sprite bounds
+    assign within_limits = (hcount < x + WIDTH) & (hcount >= x) & (vcount < y + HEIGHT) & (vcount >= y);
+    assign p_x = hcount - x;
+    assign p_y = vcount - y;
+    wire [11:0] p_rom; //output pixel from rom
+    
+    
+    sprite_rom #(.WIDTH(WIDTH),.HEIGHT(HEIGHT),.LOG_FRAMES(LOG_FRAMES)) rom (.x(p_x), .y(p_y), .frame(curr_frame), .pixel(p_rom));
     //on the rising edge of vclock
     always @(posedge vclock) begin
         

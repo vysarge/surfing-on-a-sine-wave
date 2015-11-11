@@ -14,7 +14,6 @@ module sprite_rom #(parameter WIDTH = 20,
                     parameter LOG_FRAMES = 3)
                    (input [4:0] x, //height and width are both 20
                    input [4:0] y,
-                   input [2:0] s_type,
                    input [LOG_FRAMES-1:0] frame,
                    output reg [11:0]  pixel);
     
@@ -25,30 +24,7 @@ module sprite_rom #(parameter WIDTH = 20,
         pixel = (horiz >> (WIDTH * 12 - x*12 - 12));
         //[WIDTH*12-1-x*12:WIDTH*12-13-x*12];
     end
-    /*always @(x, horiz) begin
-        case (x) 
-            5'b00000: pixel = horiz[239:228];
-            5'b00001: pixel = horiz[227:216];
-            5'b00010: pixel = horiz[215:204];
-            5'b00011: pixel = horiz[203:192];
-            5'b00100: pixel = horiz[191:180];
-            5'b00101: pixel = horiz[179:168];
-            5'b00110: pixel = horiz[167:156];
-            5'b00111: pixel = horiz[155:144];
-            5'b01000: pixel = horiz[143:132];
-            5'b01001: pixel = horiz[131:120];
-            5'b01010: pixel = horiz[119:108];
-            5'b01011: pixel = horiz[107:96];
-            5'b01100: pixel = horiz[95:84];
-            5'b01101: pixel = horiz[83:72];
-            5'b01110: pixel = horiz[71:60];
-            5'b01111: pixel = horiz[59:48];
-            5'b10000: pixel = horiz[47:36];
-            5'b10001: pixel = horiz[35:24];
-            5'b10010: pixel = horiz[23:12];
-            5'b10011: pixel = horiz[11:0];
-        endcase
-    end*/
+    
     
     
     //for current y and frame, return the corresponding pixel strip
@@ -58,7 +34,7 @@ module sprite_rom #(parameter WIDTH = 20,
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // 20 wide, 20 tall
         //
-        if (s_type == 3'b100) begin //character sprite
+        //character sprite
             case ({frame,y})
                 8'b000_00000: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
                 8'b000_00001: horiz = 240'h000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
@@ -126,14 +102,37 @@ module sprite_rom #(parameter WIDTH = 20,
                 
                 default: horiz = 240'hF00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00;
             endcase
-        end
         
-        
-        
-        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //  15 wide, 16 tall
-        else if (s_type == 0) begin //collectable sprite
-            case({frame,y})
+    end
+    
+endmodule
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//  Module to store pixels for the collectable coin animation
+//
+module collectable_rom #(parameter WIDTH = 15,
+                    parameter HEIGHT = 16,
+                    parameter LOG_FRAMES = 3)
+                   (input [4:0] x,
+                   input [4:0] y,
+                   input [2:0] s_type,
+                   input [LOG_FRAMES-1:0] frame,
+                   output reg [11:0]  pixel);
+    
+    reg[WIDTH*12-1:0] horiz; //a horizontal strip of pixels
+    //selects the correct pixel from the horizontal strip
+    
+    always @(x, horiz) begin
+        pixel = (horiz >> (WIDTH * 12 - x*12 - 12));
+        //[WIDTH*12-1-x*12:WIDTH*12-13-x*12];
+    end
+    
+    
+    //for current y and frame, return the corresponding pixel strip
+    always @(y, frame) begin
+        if (s_type == 0) begin //if coin collectable
+            case({frame,y}) 
                 8'b000_00000: horiz = 180'h000_000_000_000_000_111_111_111_111_111_000_000_000_000_000;
                 8'b000_00001: horiz = 180'h000_000_000_111_111_B70_D92_EC2_D92_B70_111_111_000_000_000;
                 8'b000_00010: horiz = 180'h000_000_111_B70_EC2_EC2_EC2_EC2_EC2_EC2_EC2_B70_111_000_000;
@@ -271,11 +270,11 @@ module sprite_rom #(parameter WIDTH = 20,
                 8'b111_01110: horiz = 180'h000_000_000_111_111_D92_ED3_ED3_D92_950_111_111_000_000_000;
                 8'b111_01111: horiz = 180'h000_000_000_000_000_111_111_111_111_111_000_000_000_000_000;
                 
-                default: horiz = 240'hF00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00;
+                default: horiz = 180'hF00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00;
             endcase
         end
         else begin
-            horiz = 0;
+            horiz = 180'hFF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0;
         end
     end
     
