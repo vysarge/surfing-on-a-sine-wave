@@ -349,7 +349,6 @@ module wave_rom(input [10:0] index, // horizontal input to sine function
             8'd253: value = 10'd768;
             8'd254: value = 10'd768;
             8'd255: value = 10'd768;
-            8'd256: value = 10'd768;
 
 
             

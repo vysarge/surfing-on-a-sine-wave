@@ -18,6 +18,7 @@ module wave_logic #(parameter LOG_WIDTH=10, //log of horizontal values
                     input new_f, //pulses high for one clock cycle when a new frequency is input
                     input [10:0] index, //horizontal input index
                     output [9:0] wave_height, //waveform height at index
+                    output [9:0] period, //number of places in waveform that are filled.
                     output reg wave_ready //goes high for one clock cycle when wave profile calculation is done
                     );
     

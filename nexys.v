@@ -1,25 +1,6 @@
 `timescale 1ns / 1ps
 
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// 
-// Create Date: 10/1/2015 V1.0
-// Design Name: 
-// Module Name: nexys
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
-
+//top level test module
 module nexys(
    input CLK100MHZ,
    input[15:0] SW, 
@@ -103,16 +84,26 @@ module nexys(
     //inputs and outputs
     wire [10:0] hcount; //vga
     wire [9:0] vcount; //vga
-    reg [10:0] prev_hcount;
-    reg [9:0] prev_vcount;
+    wire [10:0] prev_hcount;
+    wire [9:0] prev_vcount;
     wire hsync, vsync, blank; //vga
-    reg prev_hsync, prev_vsync, prev_blank; //previous values
-    reg [10:0] prev2_hcount;
-    reg [9:0] prev2_vcount;
-    reg prev2_hsync, prev2_vsync, prev2_blank; //previous previous values (for pipelining)
-    reg [10:0] prev3_hcount;
-    reg [9:0] prev3_vcount;
-    reg prev3_hsync, prev3_vsync, prev3_blank; //etc
+    wire prev_hsync, prev_vsync, prev_blank; //previous values
+    wire [10:0] prev3_hcount;
+    wire [9:0] prev3_vcount;
+    wire prev3_hsync, prev3_vsync, prev3_blank; //etc
+    
+    pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(11)) p_hcount (.reset(reset), .clock(clock_65mhz), .in(hcount), .out(prev_hcount));
+    pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(10)) p_vcount (.reset(reset), .clock(clock_65mhz), .in(vcount), .out(prev_vcount));
+    pipeliner #(.CYCLES(3), .LOG(2), .WIDTH(11)) p3_hcount (.reset(reset), .clock(clock_65mhz), .in(hcount), .out(prev3_hcount));
+    pipeliner #(.CYCLES(3), .LOG(2), .WIDTH(10)) p3_vcount (.reset(reset), .clock(clock_65mhz), .in(vcount), .out(prev3_vcount));
+    
+    pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(1)) p_hsync (.reset(reset), .clock(clock_65mhz), .in(hsync), .out(prev_hsync));
+    pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(1)) p_vsync (.reset(reset), .clock(clock_65mhz), .in(vsync), .out(prev_vsync));
+    pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(1)) p_blank (.reset(reset), .clock(clock_65mhz), .in(blank), .out(prev_blank));
+    
+    pipeliner #(.CYCLES(3), .LOG(2), .WIDTH(1)) p3_hsync (.reset(reset), .clock(clock_65mhz), .in(hsync), .out(prev3_hsync));
+    pipeliner #(.CYCLES(3), .LOG(2), .WIDTH(1)) p3_vsync (.reset(reset), .clock(clock_65mhz), .in(vsync), .out(prev3_vsync));
+    pipeliner #(.CYCLES(3), .LOG(2), .WIDTH(1)) p3_blank (.reset(reset), .clock(clock_65mhz), .in(blank), .out(prev3_blank));
     
     wire [11:0] p_rgb; //current output pixel
     
@@ -188,26 +179,10 @@ module nexys(
     end
     
     
-    //it's quite important that prev_hcount be used here; otherwise there will be a horizontal offset
-    //assign disp_wave = disp_sel ? prev_hcount[9:0] : 10'd384;
+    
     
     always @(posedge clock_65mhz) begin
         //updating previous variables
-        prev_hcount <= hcount;
-        prev_vcount <= vcount;
-        prev_vsync <= vsync;
-        prev_hsync <= hsync;
-        prev_blank <= blank;
-        prev2_hcount <= prev_hcount;
-        prev2_vcount <= prev_vcount;
-        prev2_vsync <= prev_vsync;
-        prev2_hsync <= prev_hsync;
-        prev2_blank <= prev_blank;
-        prev3_hcount <= prev2_hcount;
-        prev3_vcount <= prev2_vcount;
-        prev3_vsync <= prev2_vsync;
-        prev3_hsync <= prev2_hsync;
-        prev3_blank <= prev2_blank;
         prev_disp_sel <= disp_sel;
         prev_up <= up;
         prev_down <= down;
@@ -225,34 +200,11 @@ module nexys(
         
         
         //update player position
-        if (prev2_hcount == 0) begin
+        if (prev3_hcount == 0) begin
             p_vpos <= disp_wave - 10; 
         end
         
-        /*if (prev_disp_sel != disp_sel) begin
-            //wave_index <= 0;
-            //wave_we <= 1;
-        end
-        else begin
-            /*if (wave_index < 1024) begin
-                wave_we <= 1;
-                wave_index <= wave_index + 1;
-                
-            end
-            else begin
-                wave_we <= 0;
-            end*/
-            
-            /*if ((up & !prev_up) & (p_vpos > 0)) begin
-                p_vpos <= p_vpos - 100;
-            end
-            else if ((down & !prev_down) & (p_vpos < SCREEN_HEIGHT-1)) begin
-                p_vpos <= p_vpos + 100;
-            end
-            else begin
-                p_vpos <= p_vpos;
-            end
-        end*/
+        
         
     end
     
@@ -261,8 +213,7 @@ module nexys(
     xvga vga1(.vclock(clock_65mhz),.hcount(hcount),.vcount(vcount),
           .hsync(hsync),.vsync(vsync),.blank(blank));
     
-    //wave_logic wave_logic(.reset(reset), .clock(clock_65mhz), .frequency(frequency), .new_f(new_f),
-    //                      .wave_prof(wave_prof), .prev_wave_prof(prev_wave_prof), .wave_ready(wave_ready));
+    
     
     wire [10:0] p_index;
     assign p_index = hcount + p_offset;
