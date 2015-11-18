@@ -84,16 +84,9 @@ module display(input reset,
     //at each pixel
     always @(posedge vclock) begin
         if (reset) begin //reset values
-            //char_x <= 0;
-            //char_frame <= 0;
             p_rgb <= 0; //temporarily display black
         end
         else begin
-            //shift in waveform data
-            //if (wave_we) begin
-            //    next_wave[wave_index] <= wave_prof;
-            //end
-            
             
             //if character data exists for this pixel
             if(character_rgb) begin //use that

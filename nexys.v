@@ -29,12 +29,12 @@ module nexys(
     clk_wiz_0 gen(.clk_100mhz(CLK100MHZ), .clk_65mhz(clock_65mhz), .clk_25mhz(clock_25mhz), .reset(clk_reset), .locked(locked));
     
     //reset signal
-    SRL16 reset_sr (.D(1'b0), .CLK(clock_25mhz), .Q(power_on_reset),
+    SRL16 reset_sr (.D(1'b0), .CLK(clock_65mhz), .Q(power_on_reset),
                .A0(1'b1), .A1(1'b1), .A2(1'b1), .A3(1'b1));
     defparam reset_sr.INIT = 16'hFFFF;
     
     //user reset
-    debounce center(.reset(power_on_reset),.clock(clock_25mhz),.noisy(BTNC),.clean(user_reset));
+    debounce center(.reset(power_on_reset),.clock(clock_65mhz),.noisy(BTNC),.clean(user_reset));
     assign reset = user_reset | power_on_reset;
     
     
@@ -48,7 +48,7 @@ module nexys(
 //  instantiate 7-segment display;  
     wire [31:0] data;
     wire [6:0] segments;
-    display_8hex display8hex(.clk(clock_25mhz),.data(data), .seg(segments), .strobe(AN));    
+    display_8hex display8hex(.clk(clock_65mhz),.data(data), .seg(segments), .strobe(AN));    
     assign SEG[6:0] = segments;
     assign SEG[7] = 1'b1;
 
@@ -57,8 +57,7 @@ module nexys(
 //  remove these lines and insert your lab here
 
     //assign LED = SW;     
-    assign JA[7:1] = 7'b0;
-    assign JA[0] = clock_25mhz;
+    assign JA[7:0] = 8'b0;
     //assign data = {28'h0123456, SW[3:0]};   // display 0123456 + SW
 
     assign LED17_R = BTNL;
@@ -94,20 +93,20 @@ module nexys(
     
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(11)) p_hcount (.reset(reset), .clock(clock_65mhz), .in(hcount), .out(prev_hcount));
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(10)) p_vcount (.reset(reset), .clock(clock_65mhz), .in(vcount), .out(prev_vcount));
-    pipeliner #(.CYCLES(3), .LOG(2), .WIDTH(11)) p3_hcount (.reset(reset), .clock(clock_65mhz), .in(hcount), .out(prev3_hcount));
-    pipeliner #(.CYCLES(3), .LOG(2), .WIDTH(10)) p3_vcount (.reset(reset), .clock(clock_65mhz), .in(vcount), .out(prev3_vcount));
+    pipeliner #(.CYCLES(4), .LOG(3), .WIDTH(11)) p3_hcount (.reset(reset), .clock(clock_65mhz), .in(hcount), .out(prev3_hcount));
+    pipeliner #(.CYCLES(4), .LOG(3), .WIDTH(10)) p3_vcount (.reset(reset), .clock(clock_65mhz), .in(vcount), .out(prev3_vcount));
     
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(1)) p_hsync (.reset(reset), .clock(clock_65mhz), .in(hsync), .out(prev_hsync));
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(1)) p_vsync (.reset(reset), .clock(clock_65mhz), .in(vsync), .out(prev_vsync));
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(1)) p_blank (.reset(reset), .clock(clock_65mhz), .in(blank), .out(prev_blank));
     
-    pipeliner #(.CYCLES(3), .LOG(2), .WIDTH(1)) p3_hsync (.reset(reset), .clock(clock_65mhz), .in(hsync), .out(prev3_hsync));
-    pipeliner #(.CYCLES(3), .LOG(2), .WIDTH(1)) p3_vsync (.reset(reset), .clock(clock_65mhz), .in(vsync), .out(prev3_vsync));
-    pipeliner #(.CYCLES(3), .LOG(2), .WIDTH(1)) p3_blank (.reset(reset), .clock(clock_65mhz), .in(blank), .out(prev3_blank));
+    pipeliner #(.CYCLES(4), .LOG(3), .WIDTH(1)) p3_hsync (.reset(reset), .clock(clock_65mhz), .in(hsync), .out(prev3_hsync));
+    pipeliner #(.CYCLES(4), .LOG(3), .WIDTH(1)) p3_vsync (.reset(reset), .clock(clock_65mhz), .in(vsync), .out(prev3_vsync));
+    pipeliner #(.CYCLES(4), .LOG(3), .WIDTH(1)) p3_blank (.reset(reset), .clock(clock_65mhz), .in(blank), .out(prev3_blank));
     
     wire [11:0] p_rgb; //current output pixel
     
-    reg [10:0] p_offset; //current player horizontal position (positive as wave moves left)
+    reg [19:0] p_offset; //current player horizontal position (positive as wave moves left)
     reg [9:0] p_vpos; //current player vertical position
     reg [9:0] wave_prof[1023:0]; //current waveform profile
     reg [9:0] prev_wave_prof[1023:0];
@@ -116,14 +115,12 @@ module nexys(
     reg [25:0] obj1, obj2, obj3, obj4, obj5;
     reg [2:0] obj_frame_counter;
     
-    wire [4:0] freq_id;
-    assign freq_id = SW[15:11];
     reg new_f;
     
     wire wave_ready;
     
     
-    wire [9:0] disp_wave;
+    
     reg wave_we;
     reg [10:0] wave_index;
     wire disp_sel; // if 0, display horizontal profile.  If 1, display ramp
@@ -137,11 +134,11 @@ module nexys(
     wire right;
     
     //assigning buttons
-    debounce sw0(.reset(reset),.clock(clock_25mhz),.noisy(SW[0]),.clean(disp_sel));
-    debounce dbu(.reset(reset),.clock(clock_25mhz),.noisy(BTNU),.clean(up));
-    debounce dbd(.reset(reset),.clock(clock_25mhz),.noisy(BTND),.clean(down));
-    debounce dbl(.reset(reset),.clock(clock_25mhz),.noisy(BTNL),.clean(left));
-    debounce dbr(.reset(reset),.clock(clock_25mhz),.noisy(BTNR),.clean(right));
+    debounce sw0(.reset(reset),.clock(clock_65mhz),.noisy(SW[0]),.clean(disp_sel));
+    debounce dbu(.reset(reset),.clock(clock_65mhz),.noisy(BTNU),.clean(up));
+    debounce dbd(.reset(reset),.clock(clock_65mhz),.noisy(BTND),.clean(down));
+    debounce dbl(.reset(reset),.clock(clock_65mhz),.noisy(BTNL),.clean(left));
+    debounce dbr(.reset(reset),.clock(clock_65mhz),.noisy(BTNR),.clean(right));
     
     
     assign LED16_R = left;                  // left button -> red led
@@ -164,7 +161,7 @@ module nexys(
     //each frame
     always @(posedge vsync) begin
         //for testing purposes, constantly step p_offset by one
-        if (p_offset < SCREEN_WIDTH) begin
+        if (p_offset < period) begin
             p_offset <= p_offset + 1;
         end
         else begin
@@ -201,7 +198,7 @@ module nexys(
         
         //update player position
         if (prev3_hcount == 0) begin
-            p_vpos <= disp_wave - 10; 
+            p_vpos <= p_height; 
         end
         
         
@@ -215,14 +212,23 @@ module nexys(
     
     
     
-    wire [10:0] p_index;
+    wire [9:0] disp_wave;
+    wire [4:0] freq_id1, freq_id2;
+    assign freq_id1 = SW[15:11];
+    assign freq_id2 = SW[10:6];
     assign p_index = hcount + p_offset;
-    wave_logic wave_logic(.reset(reset), .clock(clock_65mhz), .freq_id(freq_id), .new_f(new_f), .index(p_index),
-                          .wave_height(disp_wave), .wave_ready(wave_ready));
-    
-    
-    
-    
+    wire [9:0] p_height;
+    wire [19:0] period;
+    /*wave_logic wave_logic(.reset(reset), .clock(clock_65mhz), .freq_id(freq_id), .new_f(new_f), .index(p_index),
+                          .wave_height(disp_wave), .wave_ready(wave_ready), .period(period));
+    */
+    wire [10:0] period0;
+    wire curr_w0;
+    wire [3:0] wave_ready;
+    physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .offset(p_offset), .hcount(hcount),
+                    .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f_in(new_f),
+                    .player_profile(p_height), .wave_profile(disp_wave), .com_period(period), .period0(period0), .curr_w0(curr_w0), .wave_ready(wave_ready)
+                    );
     
     
     
@@ -243,10 +249,11 @@ module nexys(
     
     //test outputs
     //assign data[11:0] = {1'b0, reset_count}; //last three digits disp_wave
-    assign data[31:20] = {2'b0, p_vpos}; //first three digits wave_index
-    assign data[3:0] = {1'b0,obj1[25:23]};
+    assign data[31:20] = {freq_id1}; //first three digits wave_index
+    assign data[19:0] = {period0};
     assign LED[0] = 1;
-    assign LED[1] = 1;//up;
+    assign LED[1] = curr_w0;//up;
+    assign LED[6:3] = wave_ready;
     assign LED[2] = down;
     
 endmodule

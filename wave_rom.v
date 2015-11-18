@@ -5,45 +5,16 @@
 module wave_rom(input [10:0] index, // horizontal input to sine function
                 input [4:0] freq_id, // frequency id on a 25-tone midi keyboard, 0 is lowest
                 output reg [9:0] value, // 768*sin(index*pi/256)
-                output reg [10:0] freq); // scaled output frequency
+                output reg [10:0] freq, // scaled output frequency
+                output reg [10:0] period //output period
+                ); 
     
-    //frequency matching
-    always @(freq_id) begin
-        case(freq_id)
-            
-            5'd0: freq = 11'd256;
-            5'd1: freq = 11'd271;
-            5'd2: freq = 11'd287;
-            5'd3: freq = 11'd304;
-            5'd4: freq = 11'd323;
-            5'd5: freq = 11'd342;
-            5'd6: freq = 11'd362;
-            5'd7: freq = 11'd384;
-            5'd8: freq = 11'd406;
-            5'd9: freq = 11'd431;
-            5'd10: freq = 11'd456;
-            5'd11: freq = 11'd483;
-            5'd12: freq = 11'd512;
-            5'd13: freq = 11'd542;
-            5'd14: freq = 11'd575;
-            5'd15: freq = 11'd609;
-            5'd16: freq = 11'd645;
-            5'd17: freq = 11'd683;
-            5'd18: freq = 11'd724;
-            5'd19: freq = 11'd767;
-            5'd20: freq = 11'd813;
-            5'd21: freq = 11'd861;
-            5'd22: freq = 11'd912;
-            5'd23: freq = 11'd967;
-            5'd24: freq = 11'd1024;
-            
-            default: freq = 0;
-        endcase
-    end
     
     reg [8:0] c_index; //adjusted index
-    //output absolute value of sine across entire period
-    always @(index) begin
+    
+    always @(*) begin
+        
+        //output absolute value of sine across entire period
         if (index < 256) begin
             c_index = index;
         end
@@ -56,11 +27,41 @@ module wave_rom(input [10:0] index, // horizontal input to sine function
         else begin
             c_index = 1024 - index;
         end
-    end
-    
-    
-    //sine values
-    always @(c_index) begin
+        
+        //frequency and period values
+        case(freq_id)
+            
+            5'd0: begin freq = 11'd256; period = 11'd1024; end
+            5'd1: begin freq = 11'd271; period = 11'd967; end
+            5'd2: begin freq = 11'd287; period = 11'd912; end
+            5'd3: begin freq = 11'd304; period = 11'd861; end
+            5'd4: begin freq = 11'd323; period = 11'd813; end
+            5'd5: begin freq = 11'd342; period = 11'd767; end
+            5'd6: begin freq = 11'd362; period = 11'd724; end
+            5'd7: begin freq = 11'd384; period = 11'd683; end
+            5'd8: begin freq = 11'd406; period = 11'd645; end
+            5'd9: begin freq = 11'd431; period = 11'd609; end
+            5'd10: begin freq = 11'd456; period = 11'd575; end
+            5'd11: begin freq = 11'd483; period = 11'd542; end
+            5'd12: begin freq = 11'd512; period = 11'd512; end
+            5'd13: begin freq = 11'd542; period = 11'd483; end
+            5'd14: begin freq = 11'd575; period = 11'd456; end
+            5'd15: begin freq = 11'd609; period = 11'd431; end
+            5'd16: begin freq = 11'd645; period = 11'd406; end
+            5'd17: begin freq = 11'd683; period = 11'd384; end
+            5'd18: begin freq = 11'd724; period = 11'd362; end
+            5'd19: begin freq = 11'd767; period = 11'd342; end
+            5'd20: begin freq = 11'd813; period = 11'd323; end
+            5'd21: begin freq = 11'd861; period = 11'd304; end
+            5'd22: begin freq = 11'd912; period = 11'd287; end
+            5'd23: begin freq = 11'd967; period = 11'd271; end
+            5'd24: begin freq = 11'd1024; period = 11'd256; end
+            5'd31: begin freq = 11'd0; period = 11'd1; end
+            
+            default: begin freq = 11'd256; period = 11'd1024; end
+        endcase
+
+        //sine values
         case(c_index)
             8'd000: value = 10'd0;
             8'd001: value = 10'd5;
@@ -349,10 +350,13 @@ module wave_rom(input [10:0] index, // horizontal input to sine function
             8'd253: value = 10'd768;
             8'd254: value = 10'd768;
             8'd255: value = 10'd768;
-
+            9'd256: value = 10'd768;
 
             
-            default: value = 10'd768;
+            default: value = 10'd384;
         endcase
+
     end
+    
+    
 endmodule
