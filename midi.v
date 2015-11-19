@@ -1,8 +1,8 @@
 `timescale 1ns / 1ps
 
 module midi
-			#(parameter COUNT=12'd3200,			//baud rate of MIDI is 31.25kHz
-				TIME_THRESHOLD = 12'd1000,
+			#(parameter COUNT=12'd2080,			//baud rate of MIDI is 31.25kHz -> 65Mhz/31.25kHz = 2080
+				TIME_THRESHOLD = 12'd300,
 				ERROR_THRESHOLD = 12'd500,
 				NOTE_WIDTH = 6,
 				WAIT = 0,
