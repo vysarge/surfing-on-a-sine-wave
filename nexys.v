@@ -93,16 +93,16 @@ module nexys(
     
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(11)) p_hcount (.reset(reset), .clock(clock_65mhz), .in(hcount), .out(prev_hcount));
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(10)) p_vcount (.reset(reset), .clock(clock_65mhz), .in(vcount), .out(prev_vcount));
-    pipeliner #(.CYCLES(5), .LOG(3), .WIDTH(11)) p3_hcount (.reset(reset), .clock(clock_65mhz), .in(hcount), .out(prev3_hcount));
-    pipeliner #(.CYCLES(5), .LOG(3), .WIDTH(10)) p3_vcount (.reset(reset), .clock(clock_65mhz), .in(vcount), .out(prev3_vcount));
+    pipeliner #(.CYCLES(6), .LOG(3), .WIDTH(11)) p3_hcount (.reset(reset), .clock(clock_65mhz), .in(hcount), .out(prev3_hcount));
+    pipeliner #(.CYCLES(6), .LOG(3), .WIDTH(10)) p3_vcount (.reset(reset), .clock(clock_65mhz), .in(vcount), .out(prev3_vcount));
     
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(1)) p_hsync (.reset(reset), .clock(clock_65mhz), .in(hsync), .out(prev_hsync));
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(1)) p_vsync (.reset(reset), .clock(clock_65mhz), .in(vsync), .out(prev_vsync));
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(1)) p_blank (.reset(reset), .clock(clock_65mhz), .in(blank), .out(prev_blank));
     
-    pipeliner #(.CYCLES(5), .LOG(3), .WIDTH(1)) p3_hsync (.reset(reset), .clock(clock_65mhz), .in(hsync), .out(prev3_hsync));
-    pipeliner #(.CYCLES(5), .LOG(3), .WIDTH(1)) p3_vsync (.reset(reset), .clock(clock_65mhz), .in(vsync), .out(prev3_vsync));
-    pipeliner #(.CYCLES(5), .LOG(3), .WIDTH(1)) p3_blank (.reset(reset), .clock(clock_65mhz), .in(blank), .out(prev3_blank));
+    pipeliner #(.CYCLES(6), .LOG(3), .WIDTH(1)) p3_hsync (.reset(reset), .clock(clock_65mhz), .in(hsync), .out(prev3_hsync));
+    pipeliner #(.CYCLES(6), .LOG(3), .WIDTH(1)) p3_vsync (.reset(reset), .clock(clock_65mhz), .in(vsync), .out(prev3_vsync));
+    pipeliner #(.CYCLES(6), .LOG(3), .WIDTH(1)) p3_blank (.reset(reset), .clock(clock_65mhz), .in(blank), .out(prev3_blank));
     
     wire [11:0] p_rgb; //current output pixel
     
@@ -219,17 +219,15 @@ module nexys(
     assign p_index = hcount + p_offset;
     wire [9:0] p_height;
     wire [20:0] period;
-    /*wave_logic wave_logic(.reset(reset), .clock(clock_65mhz), .freq_id(freq_id), .new_f(new_f), .index(p_index),
-                          .wave_height(disp_wave), .wave_ready(wave_ready), .period(period));
-    */
+    
     wire [10:0] period0;
     wire curr_w0;
     wire [3:0] wave_ready;
     wire [10:0] d_offset;
     assign d_offset = 1'b1;
-    physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .d_offset(d_offset), .hcount(hcount),
+    physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .d_offset(d_offset), .r_offset(up), .hcount(hcount),
                     .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f_in(new_f),
-                    .player_profile(p_height), .wave_profile(disp_wave), .com_period(period), .period0(period0), .curr_w0(curr_w0), .wave_ready(wave_ready)
+                    .player_profile(p_height), .wave_profile(disp_wave)
                     );
     
     
