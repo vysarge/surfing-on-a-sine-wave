@@ -24,10 +24,10 @@ module nexys(
    input CLK100MHZ,
    input[15:0] SW, 
    input BTNC, BTNU, BTNL, BTNR, BTND,
+   input [7:0] JA, 
    output[3:0] VGA_R, 
    output[3:0] VGA_B, 
    output[3:0] VGA_G,
-   output[7:0] JA, 
    output VGA_HS, 
    output VGA_VS, 
    output LED16_B, LED16_G, LED16_R,
@@ -76,8 +76,6 @@ module nexys(
 //  remove these lines and insert your lab here
 
     //assign LED = SW;     
-    assign JA[7:1] = 7'b0;
-    assign JA[0] = clock_25mhz;
     //assign data = {28'h0123456, SW[3:0]};   // display 0123456 + SW
 
     assign LED17_R = BTNL;
@@ -116,18 +114,18 @@ module nexys(
     
     wire [11:0] p_rgb; //current output pixel
     
-    reg [10:0] p_offset; //current player horizontal position (positive as wave moves left)
-    reg [9:0] p_vpos; //current player vertical position
+    wire [10:0] p_offset; //current player horizontal position (positive as wave moves left)
+    wire [9:0] p_vpos; //current player vertical position
     reg [9:0] wave_prof[1023:0]; //current waveform profile
     reg [9:0] prev_wave_prof[1023:0];
     
     //object data registers; see display module for details
-    reg [25:0] obj1, obj2, obj3, obj4, obj5;
+    wire [25:0] obj1, obj2, obj3, obj4, obj5;
     reg [2:0] obj_frame_counter;
     
     wire [4:0] freq_id;
-    assign freq_id = SW[15:11];
-    reg new_f;
+    //assign freq_id = SW[15:11];
+    wire new_f;
     
     wire wave_ready;
     
@@ -157,22 +155,24 @@ module nexys(
     assign LED16_G = BTNC;                  // center button -> green led
     assign LED16_B = right;                  // right button -> blue led
     
+    /*
     initial begin
         p_vpos = 384;
         wave_index = 0;
         
-        obj1 = 25'b000_00_00100000000_0100000000;
+        obj1 = 26'b000_00_00100000000_0100000000;
         obj2 = 0;
         obj3 = 0;
         obj4 = 0;
         obj5 = 0;
         obj_frame_counter = 0;
     end
+    */
     
-    
-    //each frame
+    /*each frame
     always @(posedge vsync) begin
         //for testing purposes, constantly step p_offset by one
+        
         if (p_offset < SCREEN_WIDTH) begin
             p_offset <= p_offset + 1;
         end
@@ -186,7 +186,7 @@ module nexys(
             obj1[25:23] <= obj1[25:23] + 1;
         end
     end
-    
+    */
     
     //it's quite important that prev_hcount be used here; otherwise there will be a horizontal offset
     //assign disp_wave = disp_sel ? prev_hcount[9:0] : 10'd384;
@@ -214,7 +214,7 @@ module nexys(
         prev_left <= left;
         prev_right <= right;
         
-        
+        /*
         //flash new_f when SW0 goes high
         if (disp_sel & (prev_disp_sel == 0)) begin
             new_f <= 1;
@@ -254,6 +254,8 @@ module nexys(
             end
         end*/
         
+        
+        
     end
     
     
@@ -265,13 +267,14 @@ module nexys(
     //                      .wave_prof(wave_prof), .prev_wave_prof(prev_wave_prof), .wave_ready(wave_ready));
     
     wire [10:0] p_index;
-    assign p_index = hcount + p_offset;
+    //assign p_index = hcount + p_offset;
     wave_logic wave_logic(.reset(reset), .clock(clock_65mhz), .freq_id(freq_id), .new_f(new_f), .index(p_index),
                           .wave_height(disp_wave), .wave_ready(wave_ready));
     
-    
-    
-    
+    wire midi_ready;
+    wire [6:0] key_index;
+    midi kb(.clk(clock_65mhz),.serial(JA[0]),.ready(midi_ready),.key_index(key_index));
+    //assign freq_id = key_index - 7'd48;
     
     
     
@@ -281,6 +284,13 @@ module nexys(
                     .vclock(clock_65mhz), .hcount(prev_hcount), .vcount(prev_vcount),
                     .p_obj1(obj1), .p_obj2(obj2), .p_obj3(obj3), .p_obj4(obj4), .p_obj5(obj5),
                     .hsync(prev_hsync), .vsync(prev_vsync), .blank(prev_blank), .p_rgb(p_rgb));
+                    
+    game_logic gfsm (.clock(clock_65mhz),.midi_index(key_index),.midi_ready(midi_ready),
+                		.wave_height(disp_wave),.wave_ready(wave_ready),.hcount(hcount),   
+                		.vcount(vcount),.vsync(vsync),.hsync(hsync),.blank(blank),
+                		.p_offset(p_offset), .p_vpos(p_vpos), .char_frame(char_frame), 
+                		 .p_index(p_index),.p_obj1(obj1),.p_obj2(obj2),
+                		.p_obj3(obj3), .p_obj4(obj4),.p_obj5(obj5),.freq_id(freq_id),.new_freq(new_f));
     
     
     
