@@ -105,23 +105,16 @@ module nexys(
     pipeliner #(.CYCLES(6), .LOG(3), .WIDTH(1)) p3_blank (.reset(reset), .clock(clock_65mhz), .in(blank), .out(prev3_blank));
     
     wire [11:0] p_rgb; //current output pixel
-    
-    reg [20:0] p_offset; //current player horizontal position (positive as wave moves left)
     reg [9:0] p_vpos; //current player vertical position
-    reg [9:0] wave_prof[1023:0]; //current waveform profile
-    reg [9:0] prev_wave_prof[1023:0];
     
     //object data registers; see display module for details
     reg [25:0] obj1, obj2, obj3, obj4, obj5;
     reg [2:0] obj_frame_counter;
-    
     reg new_f;
-    
     wire wave_ready;
     
     
     
-    reg wave_we;
     reg [10:0] wave_index;
     wire disp_sel; // if 0, display horizontal profile.  If 1, display ramp
     reg prev_disp_sel; //previous value of disp_sel; 65mhz
@@ -160,13 +153,7 @@ module nexys(
     
     //each frame
     always @(negedge vsync) begin
-        //for testing purposes, constantly step p_offset by one
-        if (p_offset < period) begin
-            p_offset <= p_offset + 1;
-        end
-        else begin
-            p_offset <= 0;
-        end
+        
         
         //increment frame counter so that obj appears to rotate roughly once a second
         obj_frame_counter <= obj_frame_counter + 1; //3 bits; changes display frame once every 8 vga frames
@@ -216,7 +203,6 @@ module nexys(
     wire [4:0] freq_id1, freq_id2;
     assign freq_id1 = SW[15:11];
     assign freq_id2 = SW[10:6];
-    assign p_index = hcount + p_offset;
     wire [9:0] p_height;
     wire [20:0] period;
     
@@ -225,6 +211,8 @@ module nexys(
     wire [3:0] wave_ready;
     wire [10:0] d_offset;
     assign d_offset = 1'b1;
+    
+    
     physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .d_offset(d_offset), .r_offset(up), .hcount(hcount),
                     .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f_in(new_f),
                     .player_profile(p_height), .wave_profile(disp_wave)
@@ -233,8 +221,8 @@ module nexys(
     
     
     
-    //wire[9:0] vpos;
-    display display(.reset(reset), .p_offset(p_offset), .p_vpos(p_vpos), .char_frame(SW[2:1]), .wave_prof(disp_wave), 
+    
+    display display(.reset(reset), .p_vpos(p_vpos), .char_frame(SW[2:1]), .wave_prof(disp_wave), 
                     .vclock(clock_65mhz), .hcount(prev_hcount), .vcount(prev_vcount),
                     .p_obj1(obj1), .p_obj2(obj2), .p_obj3(obj3), .p_obj4(obj4), .p_obj5(obj5),
                     .hsync(prev_hsync), .vsync(prev_vsync), .blank(prev_blank), .p_rgb(p_rgb));

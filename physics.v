@@ -5,6 +5,18 @@
 // This module implements the physics of transitioning from one waveform to another
 // and provides a wrapper for the wave_logic module.
 // It provides constant output, switching over frequencies smoothly when wave_logic is done calculating.
+    //reset is reset
+    //clock is 65 mhz
+    //vsync is vsync
+    //d_offset is the change, in pixels, of the player offset in one frame.
+    //r_offset, if asserted for one cycle of vsync, resets the internal offset counters to 0.  Active high.
+    //hcount is hcount
+    //freq_id1 and freq_id2 are frequency id inputs, ranging from 0 to 24.  
+        //A value of 31 means no frequency input in that channel, so 0, 1, or 2 frequency inputs can be used.
+    //new_f_in is asserted for one cycle of vsync when a new frequency id is input.
+    //player_profile is the output corresponding to the player's vertical position.
+    //wave_profile is the output corresponding to the wave's vertical height at that hcount and offset.
+    //Outputs appear with a 6-cycle delay after their corresponding hcount is input.
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -25,12 +37,9 @@ module physics(input reset,
     //calculation variables
     reg [10:0] prev_hcount; //delayed by one cycle value of hcount
     reg [9:0] wave_coeff; //blending coefficient for waveform
-    reg [2:0] wave_coeff_counter;
     reg [9:0] coeff; //blending coefficient for player path; 0 means entirely most recent frequency.
-    reg [3:0] coeff_counter;
     reg [9:0] index[3:0];
     reg [10:0] offset_p [3:0]; //offset trimmed to periods
-    reg [10:0] offset_p1 [3:0]; //temp value holder
     reg [10:0] hcount_p [3:0]; //value + hcount
     reg curr_w0; //1 if 0 and 1 were most recently updated
     
@@ -47,6 +56,11 @@ module physics(input reset,
     
     
     //wave logic modules
+    //each of these handles one frequency.
+    //0 and 1 handle the two recently-input frequencies when curr_w0 is 1
+    //2 and 3 handle the two recently-input frequencies when curr_w0 is 0
+    //When curr_w0 is 1, 2 and 3 maintain their previous values to effect a smooth transition.
+    //The coeff and wave_coeff variables handle exponential decay of the previous waveforms.
     wave_logic wl0 (.reset(reset), .clock(clock), .freq_id(freq_id[0]), .new_f(new_f[0]), 
                     .index(index[0]), .wave_height(height_out[0]), .period(period[0]), .c_freq(freq[0]), .wave_ready(ready[0]));
     wave_logic wl1 (.reset(reset), .clock(clock), .freq_id(freq_id[1]), .new_f(new_f[1]), 
@@ -56,7 +70,7 @@ module physics(input reset,
     wave_logic wl3 (.reset(reset), .clock(clock), .freq_id(freq_id[3]), .new_f(new_f[3]), 
                     .index(index[3]), .wave_height(height_out[3]), .period(period[3]), .c_freq(freq[3]), .wave_ready(ready[3]));
     
-    initial begin
+    initial begin //initial values
         coeff <= 9'b111111111;
         wave_coeff <= 9'b111111111;
         wave_ready <= 0;
@@ -83,6 +97,7 @@ module physics(input reset,
         height[2] <= &freq_id[2] ? 384 : height_out[2];
         height[3] <= &freq_id[3] ? 384 : height_out[3];
         
+        //store previous hcount
         prev_hcount <= hcount;
         
         //computes (offset_p+hcount) % period
@@ -156,8 +171,6 @@ module physics(input reset,
         end
         
         
-        coeff_counter <= coeff_counter + 1;
-        wave_coeff_counter <= wave_coeff_counter + 1;
         
         coeff <= coeff * 1000 >> 10;
         wave_coeff <= wave_coeff * 950 >> 10;
