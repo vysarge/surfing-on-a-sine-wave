@@ -19,13 +19,14 @@ module wave_logic #(parameter LOG_WIDTH=10, //log of horizontal values
                     input [10:0] index, //horizontal input index
                     output reg [9:0] wave_height, //waveform height at index
                     output reg [10:0] period, //number of places in waveform that are filled.
+                    output reg [10:0] c_freq,
                     output reg wave_ready //goes high for one clock cycle when wave profile calculation is done
                     );
     
     //set up sine rom
     wire [10:0] period_out;
     wire [10:0] freq_out; 
-    reg [10:0] c_freq; //current frequency during calculation
+    //reg [10:0] c_freq; //current frequency during calculation
     wire [9:0] c_value; //current value output from rom
     reg [10:0] c_index; //adjusted index (index to be input to ROM to receive proper output given frequency)
     reg [31:0] waveform [1023:0]; //full waveform profile, with any applied transforms etc
@@ -82,7 +83,10 @@ module wave_logic #(parameter LOG_WIDTH=10, //log of horizontal values
             else begin
                 
                 //depending on area, fill waveform in appropriate way
-                if (c_index < 512) begin
+                if (period == 1) begin
+                    waveform[index_counter] <= 384;
+                end
+                else if (c_index < 512) begin
                     waveform[index_counter] <= (c_value>>3)+384; //fill one slot
                 end
                 else begin

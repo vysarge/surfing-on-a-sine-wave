@@ -56,7 +56,7 @@ module nexys(
 //
 //  remove these lines and insert your lab here
 
-    //assign LED = SW;     
+    //assign LED = SW;
     assign JA[7:0] = 8'b0;
     //assign data = {28'h0123456, SW[3:0]};   // display 0123456 + SW
 
@@ -93,20 +93,20 @@ module nexys(
     
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(11)) p_hcount (.reset(reset), .clock(clock_65mhz), .in(hcount), .out(prev_hcount));
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(10)) p_vcount (.reset(reset), .clock(clock_65mhz), .in(vcount), .out(prev_vcount));
-    pipeliner #(.CYCLES(4), .LOG(3), .WIDTH(11)) p3_hcount (.reset(reset), .clock(clock_65mhz), .in(hcount), .out(prev3_hcount));
-    pipeliner #(.CYCLES(4), .LOG(3), .WIDTH(10)) p3_vcount (.reset(reset), .clock(clock_65mhz), .in(vcount), .out(prev3_vcount));
+    pipeliner #(.CYCLES(5), .LOG(3), .WIDTH(11)) p3_hcount (.reset(reset), .clock(clock_65mhz), .in(hcount), .out(prev3_hcount));
+    pipeliner #(.CYCLES(5), .LOG(3), .WIDTH(10)) p3_vcount (.reset(reset), .clock(clock_65mhz), .in(vcount), .out(prev3_vcount));
     
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(1)) p_hsync (.reset(reset), .clock(clock_65mhz), .in(hsync), .out(prev_hsync));
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(1)) p_vsync (.reset(reset), .clock(clock_65mhz), .in(vsync), .out(prev_vsync));
     pipeliner #(.CYCLES(1), .LOG(1), .WIDTH(1)) p_blank (.reset(reset), .clock(clock_65mhz), .in(blank), .out(prev_blank));
     
-    pipeliner #(.CYCLES(4), .LOG(3), .WIDTH(1)) p3_hsync (.reset(reset), .clock(clock_65mhz), .in(hsync), .out(prev3_hsync));
-    pipeliner #(.CYCLES(4), .LOG(3), .WIDTH(1)) p3_vsync (.reset(reset), .clock(clock_65mhz), .in(vsync), .out(prev3_vsync));
-    pipeliner #(.CYCLES(4), .LOG(3), .WIDTH(1)) p3_blank (.reset(reset), .clock(clock_65mhz), .in(blank), .out(prev3_blank));
+    pipeliner #(.CYCLES(5), .LOG(3), .WIDTH(1)) p3_hsync (.reset(reset), .clock(clock_65mhz), .in(hsync), .out(prev3_hsync));
+    pipeliner #(.CYCLES(5), .LOG(3), .WIDTH(1)) p3_vsync (.reset(reset), .clock(clock_65mhz), .in(vsync), .out(prev3_vsync));
+    pipeliner #(.CYCLES(5), .LOG(3), .WIDTH(1)) p3_blank (.reset(reset), .clock(clock_65mhz), .in(blank), .out(prev3_blank));
     
     wire [11:0] p_rgb; //current output pixel
     
-    reg [19:0] p_offset; //current player horizontal position (positive as wave moves left)
+    reg [20:0] p_offset; //current player horizontal position (positive as wave moves left)
     reg [9:0] p_vpos; //current player vertical position
     reg [9:0] wave_prof[1023:0]; //current waveform profile
     reg [9:0] prev_wave_prof[1023:0];
@@ -159,7 +159,7 @@ module nexys(
     
     
     //each frame
-    always @(posedge vsync) begin
+    always @(negedge vsync) begin
         //for testing purposes, constantly step p_offset by one
         if (p_offset < period) begin
             p_offset <= p_offset + 1;
@@ -218,14 +218,16 @@ module nexys(
     assign freq_id2 = SW[10:6];
     assign p_index = hcount + p_offset;
     wire [9:0] p_height;
-    wire [19:0] period;
+    wire [20:0] period;
     /*wave_logic wave_logic(.reset(reset), .clock(clock_65mhz), .freq_id(freq_id), .new_f(new_f), .index(p_index),
                           .wave_height(disp_wave), .wave_ready(wave_ready), .period(period));
     */
     wire [10:0] period0;
     wire curr_w0;
     wire [3:0] wave_ready;
-    physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .offset(p_offset), .hcount(hcount),
+    wire [10:0] d_offset;
+    assign d_offset = 1'b1;
+    physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .d_offset(d_offset), .hcount(hcount),
                     .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f_in(new_f),
                     .player_profile(p_height), .wave_profile(disp_wave), .com_period(period), .period0(period0), .curr_w0(curr_w0), .wave_ready(wave_ready)
                     );
@@ -249,8 +251,8 @@ module nexys(
     
     //test outputs
     //assign data[11:0] = {1'b0, reset_count}; //last three digits disp_wave
-    assign data[31:20] = {freq_id1}; //first three digits wave_index
-    assign data[19:0] = {period0};
+    assign data[31:20] = {period0}; //first three digits wave_index
+    assign data[19:0] = {period};
     assign LED[0] = 1;
     assign LED[1] = curr_w0;//up;
     assign LED[6:3] = wave_ready;

@@ -12,14 +12,14 @@
 module physics(input reset,
                input clock,
                input vsync,
-               input [19:0] offset, //current offset of player relative to start of wave.
+               input [10:0] d_offset, //change in offset of player relative to start of wave.
                input [10:0] hcount, //current hcount of requested pixel
                input [4:0] freq_id1, //frequency id from keyboard; 0 is lowest, 24 highest.
                input [4:0] freq_id2, //5'b11111 if no second frequency
                input new_f_in, //asserted for one vsync when a new frequency is available from the keyboard
                output reg [9:0] player_profile, //where the player will be vertically.  Affected by prior frequency
                output reg [9:0] wave_profile, //waveform to be displayed.  Affected only by current frequency
-               output reg [19:0] com_period, //combined period for two frequencies to fully loop
+               output reg [20:0] com_period, //combined period for two frequencies to fully loop
                output [10:0] period0,
                output reg curr_w0,
                output reg [3:0] wave_ready
@@ -31,12 +31,18 @@ module physics(input reset,
     reg [9:0] coeff; //blending coefficient for player path; 0 means entirely most recent frequency.
     reg [3:0] coeff_counter;
     reg [9:0] index[3:0];
+    reg [10:0] offset_p [3:0]; //offset trimmed to periods
+    reg [10:0] offset_p1 [3:0]; //temp value holder
+    reg [10:0] hcount_p [3:0]; //value + hcount
     //reg curr_w0; //1 if 0 and 1 were most recently updated
     
     //embedded wave_logic modules
     reg [4:0] freq_id [3:0];
+    wire [10:0] freq [3:0];
     reg [3:0] new_f;
-    wire [9:0] height[3:0];
+    reg [2:0] quotient[3:0];
+    reg [9:0] height[3:0];
+    wire [9:0] height_out[3:0];
     wire [10:0] period[3:0];
     wire [3:0] ready;
     //reg [3:0] wave_ready; //persistent record of ready[3:0]
@@ -45,39 +51,65 @@ module physics(input reset,
     
     //wave logic modules
     wave_logic wl0 (.reset(reset), .clock(clock), .freq_id(freq_id[0]), .new_f(new_f[0]), 
-                    .index(index[0]), .wave_height(height[0]), .period(period[0]), .wave_ready(ready[0]));
+                    .index(index[0]), .wave_height(height_out[0]), .period(period[0]), .c_freq(freq[0]), .wave_ready(ready[0]));
     wave_logic wl1 (.reset(reset), .clock(clock), .freq_id(freq_id[1]), .new_f(new_f[1]), 
-                    .index(index[1]), .wave_height(height[1]), .period(period[1]), .wave_ready(ready[1]));
+                    .index(index[1]), .wave_height(height_out[1]), .period(period[1]), .c_freq(freq[1]), .wave_ready(ready[1]));
     wave_logic wl2 (.reset(reset), .clock(clock), .freq_id(freq_id[2]), .new_f(new_f[2]), 
-                    .index(index[2]), .wave_height(height[2]), .period(period[2]), .wave_ready(ready[2]));
+                    .index(index[2]), .wave_height(height_out[2]), .period(period[2]), .c_freq(freq[2]), .wave_ready(ready[2]));
     wave_logic wl3 (.reset(reset), .clock(clock), .freq_id(freq_id[3]), .new_f(new_f[3]), 
-                    .index(index[3]), .wave_height(height[3]), .period(period[3]), .wave_ready(ready[3]));
+                    .index(index[3]), .wave_height(height_out[3]), .period(period[3]), .c_freq(freq[3]), .wave_ready(ready[3]));
     
     initial begin
         coeff <= 9'b111111111;
         wave_coeff <= 9'b111111111;
+        wave_ready <= 0;
+        curr_w0 <= 0;
+        offset_p[0] <= 0;
+        offset_p[1] <= 0;
+        offset_p[2] <= 0;
+        offset_p[3] <= 0;
     end
     
     //at each new clock cycle (pixel)
     always @(posedge clock) begin
-        index[0] <= (offset[0] % period[0]) + hcount;
-        index[1] <= (offset[1] % period[1]) + hcount;
-        index[2] <= (offset[2] % period[2]) + hcount;
-        index[3] <= (offset[3] % period[3]) + hcount;
+        
+        //calculating index (total offset within a period), which is equal to (offset + hcount) % period
+        
+        quotient[0] <= (({11'b0, offset_p[0]} + hcount) * freq[0]) >> 18;
+        quotient[1] <= (({11'b0, offset_p[1]} + hcount) * freq[1]) >> 18;
+        quotient[2] <= (({11'b0, offset_p[2]} + hcount) * freq[2]) >> 18;
+        quotient[3] <= (({11'b0, offset_p[3]} + hcount) * freq[3]) >> 18;
+        
+        
+        height[0] <= &freq_id[0] ? 384 : height_out[0];
+        height[1] <= &freq_id[1] ? 384 : height_out[1];
+        height[2] <= &freq_id[2] ? 384 : height_out[2];
+        height[3] <= &freq_id[3] ? 384 : height_out[3];
+        
+        
+        index[0] <= (period[0]*quotient[0] > offset_p[0] + hcount) ? 0 : offset_p[0] + hcount - period[0]*quotient[0]-2;
+        index[1] <= (period[1]*quotient[1] > offset_p[1] + hcount) ? 0 : offset_p[1] + hcount - period[1]*quotient[1]-2;
+        index[2] <= (period[2]*quotient[2] > offset_p[2] + hcount) ? 0 : offset_p[2] + hcount - period[2]*quotient[2]-2;
+        index[3] <= (period[3]*quotient[3] > offset_p[3] + hcount) ? 0 : offset_p[3] + hcount - period[3]*quotient[3]-2;
+        
+        
+        //index[1] <= offset_p[1] + hcount - period[1]*quotient[1];
+        //index[2] <= offset_p[2] + hcount - period[2]*quotient[2];
+        //index[3] <= offset_p[3] + hcount - period[3]*quotient[3];
+        
         
         //if new frequency
-        if (new_f_in) begin
+        if (new_f_in || reset) begin
             wave_ready <= 0; //reset ready signals
         end
         else begin //otherwise, each wave_ready bit is asserted when the corresponding ready is asserted
             wave_ready <= wave_ready | ready; //these bits remain asserted until reset
         end
-        
-        
+                
         if (curr_w0) begin
             //calculate wave profile
-            wave_profile <= height[0] + height[1] - 384;
-            player_profile <= (height[0] + height[1] - 384) * (~coeff) + coeff * (height[2] + height[3] - 384);
+            wave_profile <= quotient[0] * 20;//(height[0] + height[1] - 384);
+            player_profile <= ((height[0] + height[1] - 384)); //* (~coeff)) >> 9;//+ coeff * (height[2] + height[3] - 384)) >> 9;
             
             if (new_f_in) begin
                 freq_id[2] <= freq_id1;
@@ -93,7 +125,7 @@ module physics(input reset,
         else begin
             //calculate wave profile
             wave_profile <= height[2] + height[3] - 384;
-            player_profile <= (height[2] + height[3] - 384) * (~coeff) + coeff * (height[0] + height[1] - 384);
+            player_profile <= ((height[2] + height[3] - 384));// * (~coeff)) >> 9;// + coeff * (height[0] + height[1] - 384)) >> 9;
             
             
             if (new_f_in) begin
@@ -110,7 +142,15 @@ module physics(input reset,
     end
     
     //at each frame
-    always @(posedge vsync) begin
+    always @(negedge vsync) begin
+        
+        
+        
+        offset_p[0] <= (((offset_p[0] + d_offset) >= period[0]) ? ((offset_p[0] + d_offset)-period[0]) : ((offset_p[0] + d_offset)));
+        offset_p[1] <= (((offset_p[1] + d_offset) >= period[1]) ? ((offset_p[1] + d_offset)-period[1]) : ((offset_p[1] + d_offset)));
+        offset_p[2] <= (((offset_p[2] + d_offset) >= period[2]) ? ((offset_p[2] + d_offset)-period[2]) : ((offset_p[2] + d_offset)));
+        offset_p[3] <= (((offset_p[3] + d_offset) >= period[3]) ? ((offset_p[3] + d_offset)-period[3]) : ((offset_p[3] + d_offset)));
+        
         coeff_counter <= coeff_counter + 1;
         wave_coeff_counter <= wave_coeff_counter + 1;
         
@@ -120,9 +160,12 @@ module physics(input reset,
         if (wave_coeff_counter == 0) begin
             wave_coeff <= wave_coeff * 724 >> 10;
         end
-        
-        
-        if (curr_w0) begin //if wl[0 and 1] were most recently updated
+                
+        if (reset) begin //reset
+            curr_w0 <= 0;
+            
+        end
+        else if (curr_w0) begin //if wl[0 and 1] were most recently updated
             
             //calculate common period
             com_period <= period[0]*period[1];
