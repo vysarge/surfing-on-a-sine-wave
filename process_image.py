@@ -18,19 +18,19 @@ pixels = []
 background = pmap[0,0]
 #the 3's below in the range functions correspond to downsampling the image 3x
 #change at will
-for i in range(0,img.size[0],3):
+for i in range(0,img.size[1],3):
 	pixels.append([])
-	for j in range(0,img.size[1],3):
-		if pmap[i,j] != background:
-			pixels[-1].append(pmap[i,j])
+	for j in range(0,img.size[0],3):
+		if pmap[j,i] != background:
+			pixels[-1].append(pmap[j,i])
 		else:
 			pixels[-1].append((0,0,0))
 
 out = str()
 for i in range(len(pixels)):
-	out+='8\'b000_%(row)05d: horiz=%(width)d\'h'%{"row":to_bin(i),"width":8*len(pixels[i])}
+	out+='8\'b000_%(row)05d: horiz=%(width)d\'h'%{"row":to_bin(i),"width":3*4*len(pixels[i])}
 	for j in range(len(pixels[i])):
-		out+='_%(r)02x'%{'r':pixels[i][j][0]} +'%(g)02x'%{'g':pixels[i][j][1]}+'%(b)02x'%{'b':pixels[i][j][2]}
+		out+='_%(r)1x'%{'r':pixels[i][j][0]>>4} +'%(g)1x'%{'g':pixels[i][j][1]>>4}+'%(b)1x'%{'b':pixels[i][j][2]>>4}
 	out+=';\n'
 
 print out
