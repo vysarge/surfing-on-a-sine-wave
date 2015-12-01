@@ -166,9 +166,6 @@ module nexys(
     xvga vga1(.vclock(clock_65mhz),.hcount(hcount),.vcount(vcount),
           .hsync(hsync),.vsync(vsync),.blank(blank));
     
-    
-    wire [10:0] p_index;
-    
     wire midi_ready;
     wire [6:0] key_index;
     midi kb(.clk(clock_65mhz),.serial(JA[0]),.ready(midi_ready),.key_index(key_index));
@@ -186,25 +183,23 @@ module nexys(
     wire curr_w0;
     wire [3:0] wave_ready;
     wire [10:0] d_offset;
-    assign d_offset = 1'b1;
+    wire [7:0] score;
     
     
     physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .d_offset(d_offset), .r_offset(up), .hcount(hcount),
                     .freq_id1(freq_id), .freq_id2(freq_id2), .new_f_in(new_f),
-                    .player_profile(p_height), .wave_profile(disp_wave)
-                    );
+                    .player_profile(p_height), .wave_profile(disp_wave));
     
     
-    display display(.reset(reset), .p_vpos(p_vpos), .char_frame(SW[2:1]), .wave_prof(disp_wave), 
+    display display(.reset(reset), .p_vpos(p_height), .char_frame(SW[2:1]), .wave_prof(disp_wave), 
                     .vclock(clock_65mhz), .hcount(prev_hcount), .vcount(prev_vcount),
                     .p_obj1(obj1), .p_obj2(obj2), .p_obj3(obj3), .p_obj4(obj4), .p_obj5(obj5),
                     .hsync(prev_hsync), .vsync(prev_vsync), .blank(prev_blank), .p_rgb(p_rgb));
                     
-    game_logic gfsm (.clock(clock_65mhz),.midi_index(key_index),.midi_ready(midi_ready),
+    game_logic gfsm (.clock(clock_65mhz),.midi_index(key_index),.midi_ready(midi_ready),.p_vpos(p_height),
                 		.wave_height(disp_wave),.wave_ready(wave_ready),.hcount(hcount),   
-                		.vcount(vcount),.vsync(vsync),.hsync(hsync),.blank(blank),
-                		.p_offset(p_offset), .p_vpos(p_vpos), .char_frame(char_frame), 
-                		 .p_index(p_index),.p_obj1(obj1),.p_obj2(obj2),
+                		.vcount(vcount),.vsync(vsync),.hsync(hsync),.blank(blank), .score(score),
+                		.speed(d_offset), .char_frame(char_frame), .p_obj1(obj1),.p_obj2(obj2),
                 		.p_obj3(obj3), .p_obj4(obj4),.p_obj5(obj5),.freq_id(freq_id),.new_freq(new_f));
     
     
@@ -217,8 +212,8 @@ module nexys(
     
     //test outputs
     //assign data[11:0] = {1'b0, reset_count}; //last three digits disp_wave
-    assign data[31:20] = {period0}; //first three digits wave_index
-    assign data[19:0] = {period};
+    //assign data[31:20] = {period0}; //first three digits wave_index
+    assign data[31:0] = {24'b0,score};
     assign LED[0] = 1;
     assign LED[1] = curr_w0;//up;
     assign LED[6:3] = wave_ready;
