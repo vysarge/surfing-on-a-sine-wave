@@ -5,12 +5,17 @@
 // Display module; takes in data on player offset, player position,
 // and waveform, as well as xvga signals.
 // 
-// wave_we is active high and enables wave_prof data to be written
-// at wave_index; this is clocked by posedge vclock
+    //reset is reset
+    //p_vpos is the vertical position of the character.
+    //char_frame is the frame of the character's sprite.  Currently not animated, 3 frames.
+    //wave_prof is the vertical position of the waveform at the current hcount
+    //p_obj inputs encode a variety of information about collectables / enemies on the screen.  Described in greater detail below.
+    //vclock is a 65 mhz clock.
+    //hcount, vcount, hsync, vsync, and blank are xvga inputs
+    //p_rgb is a 4-bit color output for the pixel corresponding to hcount and vcount.
 // 
 /////////////////////////////////////////////////////////////////
 module display(input reset,
-               input [10:0] p_offset, //horizontal offset
                input [9:0] p_vpos, //vertical position of character
                input [1:0] char_frame, //frame of character; 0 = stationary, 1 = rising, 2 = falling
                input [9:0] wave_prof, //waveform profile
@@ -29,7 +34,6 @@ module display(input reset,
                );
     
     //storing inputs from last clock cycle
-    reg [10:0] offset;
     reg [9:0] vpos;
     reg [25:0] obj[4:0];
     
@@ -71,7 +75,6 @@ module display(input reset,
     reg [10:0] i;
     always @(negedge vsync) begin
         //update values
-        offset <= p_offset;
         vpos <= p_vpos;
         obj[0] <= p_obj1;
         obj[1] <= p_obj2;
@@ -84,16 +87,9 @@ module display(input reset,
     //at each pixel
     always @(posedge vclock) begin
         if (reset) begin //reset values
-            //char_x <= 0;
-            //char_frame <= 0;
             p_rgb <= 0; //temporarily display black
         end
         else begin
-            //shift in waveform data
-            //if (wave_we) begin
-            //    next_wave[wave_index] <= wave_prof;
-            //end
-            
             
             //if character data exists for this pixel
             if(character_rgb) begin //use that
