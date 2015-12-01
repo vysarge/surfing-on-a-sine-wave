@@ -213,6 +213,8 @@ module nexys(
     assign d_offset = 1'b1;
     
     
+    wire [12:0] offset_p0, offset_p2;
+    
     physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .d_offset(d_offset), .r_offset(up), .hcount(hcount),
                     .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f_in(new_f),
                     .player_profile(p_height), .wave_profile(disp_wave)
@@ -237,8 +239,8 @@ module nexys(
     
     //test outputs
     //assign data[11:0] = {1'b0, reset_count}; //last three digits disp_wave
-    assign data[31:20] = {period0}; //first three digits wave_index
-    assign data[19:0] = {period};
+    assign data[28:16] = {offset_p0}; //first three digits wave_index
+    assign data[12:0] = {offset_p2};
     assign LED[0] = 1;
     assign LED[1] = curr_w0;//up;
     assign LED[6:3] = wave_ready;

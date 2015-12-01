@@ -40,6 +40,8 @@ module physics(input reset,
     reg [9:0] coeff; //blending coefficient for player path; 0 means entirely most recent frequency.
     reg [9:0] index[3:0];
     reg [10:0] offset_p [3:0]; //offset trimmed to periods
+    reg [12:0] offset_p1 [3:0]; //temp calculation holder
+    reg [12:0] offset_p2 [3:0]; //temp calculation holder
     reg [10:0] hcount_p [3:0]; //value + hcount
     reg curr_w0; //1 if 0 and 1 were most recently updated
     
@@ -84,6 +86,7 @@ module physics(input reset,
     //at each new clock cycle (pixel)
     always @(posedge clock) begin
         
+        
         //calculating index (total offset within a period), which is equal to (offset + hcount) % period
         //number of periods within offset_p+hcount
         quotient[0] <= (({11'b0, offset_p[0]} + hcount) * freq[0]) >> 18;
@@ -125,10 +128,20 @@ module physics(input reset,
             player_profile <= (((height[0] + height[1] - 384) * {10'b0, ~coeff}) >> 10)+(({10'b0, coeff} * (height[2] + height[3] - 384)) >> 10);
             
             if (new_f_in) begin
+                //always update these values
                 freq_id[2] <= freq_id1;
                 freq_id[3] <= freq_id2; //update freq_ids for waveform calculation
                 new_f[2] <= 1;
                 new_f[3] <= 1;
+                if (~new_f[2]) begin //if this is the first clock cycle after the new frequency input
+                    offset_p1[2] <= offset_p[0]*{11'b0, freq[0]} >> 8; //divide offsets by old period
+                    
+                    
+                end
+                else begin //if already one clock cycle (or more) since sending new frequencies to wave_logic
+                    offset_p2[2] <= {11'b0,offset_p1[2]}*period[2] >> 10; //multiply offsets by new period
+                    //offset_p2 <= period[2]*{11'b0, freq[0]} >> 10;
+                end
             end
             else begin
                 new_f[2] <= 0;
@@ -146,6 +159,14 @@ module physics(input reset,
                 freq_id[1] <= freq_id2; //update freq_ids for waveform calculation
                 new_f[0] <= 1;
                 new_f[1] <= 1;
+                
+                if (~new_f[0]) begin
+                    offset_p1[0] <= offset_p[2]*{11'b0, freq[2]} >> 8; //divide offsets by old period
+                    //offset_p0 <= offset_p[2]*{11'b0, freq[2]} >> 8;
+                end
+                else begin
+                    offset_p2[0] <= {11'b0,offset_p1[0]}*period[0] >> 10; //multiply offsets by new period
+                end
             end
             else begin
                 new_f[0] <= 0;
@@ -161,6 +182,14 @@ module physics(input reset,
             offset_p[1] <= 0; //reset
             offset_p[2] <= 0;
             offset_p[3] <= 0;
+        end
+        else if (new_f[0]) begin //shift in new calculated values
+            offset_p[0] <= offset_p2[0];
+            offset_p[1] <= offset_p2[1];
+        end
+        else if (new_f[2]) begin
+            offset_p[2] <= offset_p2[2];
+            offset_p[3] <= offset_p2[3];
         end
         else begin //ordinarily
             //offset_p[i] integrates d_offset, staying within period[i].

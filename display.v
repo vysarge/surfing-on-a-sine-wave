@@ -45,8 +45,8 @@ module display(input reset,
     
     //sprite declarations
     //character
-    char_sprite #(.WIDTH(20), .HEIGHT(20), .LOG_FRAMES(3)) character 
-                       (.vclock(vclock), .hcount(hcount), .x(0), .vcount(vcount),
+    char_sprite #(.WIDTH(27), .HEIGHT(30), .LOG_FRAMES(3)) character 
+                       (.vclock(vclock), .hcount(hcount), .x(10), .vcount(vcount),
                        .y(vpos), .curr_frame(char_frame), .p_rgb(character_rgb)
                        );
     
