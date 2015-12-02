@@ -16,7 +16,9 @@ module game_logic
                 CHAR_HEIGHT=20,
                 OBJ_HEIGHT=20)
                 ( input clock,
-                input [6:0] midi_index,
+                input [31:0] seed,
+                input [6:0] key1_index,
+                input [6:0] key2_index,
                 input midi_ready,
                 input [9:0] wave_height,
                 input wave_ready,
@@ -33,12 +35,14 @@ module game_logic
                 output reg [25:0] p_obj4=0, //thus a maximum of 5 objects may be on screen at one time.
                 output reg [25:0] p_obj5=0,
                 output reg [7:0] score = 0,
-                output [4:0] freq_id,
+                output [4:0] freq_id1,
+                output [4:0] freq_id2,
                 output new_freq);
     
     wire vsync_pulse;
     reg [1:0] state = START;
     reg [2:0] obj_frame_counter = 0;
+    wire [31:0] random;
     
     wire obj1_on, obj2_on, obj3_on, obj4_on, obj5_on;
     assign obj1_on = |p_obj1;
@@ -47,11 +51,18 @@ module game_logic
     assign obj4_on = |p_obj4;
     assign obj5_on = |p_obj5;
     
-    assign freq_id = midi_index - 7'd48;
+    assign freq_id1 = |key1_index ? (key1_index - 7'd48) : 5'b11111;
+    assign freq_id2 = |key2_index ? (key2_index - 7'd48) : 5'b11111;
+
     assign new_freq = midi_ready;
     
     pulse vsync_p (.clock(clock),.signal(vsync),.out(vsync_pulse));
     
+
+    rng rando (.clk(clock),.new_number(vsync_pulse),.seed(seed),
+                    .random(random));
+    
+
     always @ (posedge clock) begin
         
         //update player position
@@ -69,11 +80,13 @@ module game_logic
                     obj_frame_counter <= obj_frame_counter + 1;
                     
                     if(obj1_on) begin
-                        if (p_obj1[20:10] > 0) begin
+
+                        if (p_obj1[20:10] > speed) begin
                             p_obj1[20:10] <= p_obj1[20:10] - speed;
                         end
                         else begin
-                            p_obj1[20:10] <= SCREEN_WIDTH;
+                            p_obj1<=0;
+
                         end
                         //increment frame counter so that obj appears to rotate roughly once a second
                          //3 bits; changes frame once every 8 vga frames
@@ -85,6 +98,10 @@ module game_logic
                             score<=score+1;
                             p_obj1<=0;
                         end
+
+                    end else begin
+                        p_obj1[20:0] <= random[20:0];
+
                     end
                     
                     if(obj2_on) begin
@@ -180,3 +197,22 @@ module pulse (input clock, signal,
         else out <= signal & ~state;
     end
 endmodule
+
+module pulse2 (input clock, signal,
+              output reg out);
+    reg state = 0;
+    reg count = 0;
+    
+    always @ (posedge clock) begin
+        state<=signal;
+        if(out) begin
+            if (count == 0) begin
+                count<= count +1;
+            end else begin
+                out <= 0;
+                count<=0;
+            end
+        end else out <= signal & ~state;
+    end
+endmodule
+

@@ -158,7 +158,10 @@ module nexys(
         prev_up <= up;
         prev_down <= down;
         prev_left <= left;
-        prev_right <= right;  
+        prev_right <= right;
+        if(prev3_hcount==0) begin 
+            p_vpos<= p_height;              //sample player height to prevent glitching
+        end 
     end
     
     
@@ -167,15 +170,17 @@ module nexys(
           .hsync(hsync),.vsync(vsync),.blank(blank));
     
     wire midi_ready;
-    wire [6:0] key_index;
-    midi kb(.clk(clock_65mhz),.serial(JA[0]),.ready(midi_ready),.key_index(key_index));
+    wire [6:0] key1_index;
+    wire [6:0] key2_index;
+    midi kb(.clk(clock_65mhz),.serial(JA[0]),.ready(midi_ready),
+        .key1_index(key1_index),.key2_index(key2_index));
     //assign freq_id = key_index - 7'd48;
 
     
     wire [9:0] disp_wave;
     wire [4:0] freq_id1, freq_id2;
-    assign freq_id1 = SW[15:11];
-    assign freq_id2 = SW[10:6];
+    //assign freq_id1 = SW[15:11];
+    //assign freq_id2 = SW[10:6];
     wire [9:0] p_height;
     wire [20:0] period;
     
@@ -187,7 +192,7 @@ module nexys(
     
     
     physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .d_offset(d_offset), .r_offset(up), .hcount(hcount),
-                    .freq_id1(freq_id), .freq_id2(freq_id2), .new_f_in(new_f),
+                    .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f_in(new_f),
                     .player_profile(p_height), .wave_profile(disp_wave));
     
     
@@ -196,11 +201,14 @@ module nexys(
                     .p_obj1(obj1), .p_obj2(obj2), .p_obj3(obj3), .p_obj4(obj4), .p_obj5(obj5),
                     .hsync(prev_hsync), .vsync(prev_vsync), .blank(prev_blank), .p_rgb(p_rgb));
                     
-    game_logic gfsm (.clock(clock_65mhz),.midi_index(key_index),.midi_ready(midi_ready),.p_vpos(p_height),
+
+    game_logic gfsm (.clock(clock_65mhz),.key1_index(key1_index),.key2_index(key2_index),.midi_ready(midi_ready),.p_vpos(p_height),
                 		.wave_height(disp_wave),.wave_ready(wave_ready),.hcount(hcount),   
                 		.vcount(vcount),.vsync(vsync),.hsync(hsync),.blank(blank), .score(score),
                 		.speed(d_offset), .char_frame(char_frame), .p_obj1(obj1),.p_obj2(obj2),
-                		.p_obj3(obj3), .p_obj4(obj4),.p_obj5(obj5),.freq_id(freq_id),.new_freq(new_f));
+                		.seed({2{SW[15:0]}}),.p_obj3(obj3), .p_obj4(obj4),.p_obj5(obj5),
+                		.freq_id1(freq_id1),.freq_id2(freq_id2),.new_freq(new_f));
+
     
     
     
@@ -213,11 +221,21 @@ module nexys(
     //test outputs
     //assign data[11:0] = {1'b0, reset_count}; //last three digits disp_wave
     //assign data[31:20] = {period0}; //first three digits wave_index
+
     assign data[31:0] = {24'b0,score};
     assign LED[0] = 1;
     assign LED[1] = curr_w0;//up;
     assign LED[6:3] = wave_ready;
     assign LED[2] = down;
     
+    wire [31:0] random;
+    wire new_pulse;
+    wire [1:0] rng_state;
+    wire [9:0] i_rng;
+    /*
+    pulse2 p (.clock(clock_65mhz),.signal(down),.out(new_pulse));
+    rng rando (.clk(clock_65mhz),.new_number(new_pulse),.seed({2{SW[15:0]}}),
+                .random(random));
+    */
 endmodule
 
