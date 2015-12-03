@@ -1,7 +1,7 @@
 module shark_rom #(parameter WIDTH = 40,
                     parameter HEIGHT = 20,
                     parameter LOG_FRAMES = 3)
-                   (input [4:0] x,
+                   (input [5:0] x,
                    input [4:0] y,
                    input [2:0] s_type,
                    input [LOG_FRAMES-1:0] frame,
@@ -19,7 +19,7 @@ module shark_rom #(parameter WIDTH = 40,
     //for current y and frame, return the corresponding pixel strip
     always @(y, frame) begin
         if (s_type == 1) begin //if coin collectable
-            case({frame,y}) 
+            casex({frame,y}) 
                 8'b00x_00000: horiz=480'h_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_688_688_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
 				8'b00x_00001: horiz=480'h_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_244_244_688_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_688_000_000;
 				8'b00x_00010: horiz=480'h_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_244_244_244_688_000_000_000_000_000_000_000_000_000_000_000_000_000_000_244_acc_688_000;
@@ -91,7 +91,7 @@ module shark_rom #(parameter WIDTH = 40,
             endcase
         end
         else begin
-            horiz = 480'h_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0_FF0;
+            horiz = 0;
         end
     end
     

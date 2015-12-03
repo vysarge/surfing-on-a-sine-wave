@@ -100,7 +100,6 @@ module nexys(
     
 
     wire [10:0] p_offset; //current player horizontal position (positive as wave moves left)
-    wire [9:0] p_vpos; //current player vertical position
     reg [9:0] wave_prof[1023:0]; //current waveform profile
     reg [9:0] prev_wave_prof[1023:0];
 
@@ -196,19 +195,17 @@ module nexys(
                     .player_profile(p_height), .wave_profile(disp_wave));
     
     
-    display display(.reset(reset), .p_vpos(p_height), .char_frame(SW[2:1]), .wave_prof(disp_wave), 
+    display display(.reset(reset), .p_vpos(p_vpos), .char_frame(SW[2:1]), .wave_prof(disp_wave), 
                     .vclock(clock_65mhz), .hcount(prev_hcount), .vcount(prev_vcount),
                     .p_obj1(obj1), .p_obj2(obj2), .p_obj3(obj3), .p_obj4(obj4), .p_obj5(obj5),
                     .hsync(prev_hsync), .vsync(prev_vsync), .blank(prev_blank), .p_rgb(p_rgb));
                     
-
-    game_logic gfsm (.clock(clock_65mhz),.key1_index(key1_index),.key2_index(key2_index),.midi_ready(midi_ready),.p_vpos(p_height),
+    game_logic gfsm (.clock(clock_65mhz),.speed_j(SW[15:12]),.key1_index(key1_index),.key2_index(key2_index),.midi_ready(midi_ready),.p_vpos(p_height),
                 		.wave_height(disp_wave),.wave_ready(wave_ready),.hcount(hcount),   
                 		.vcount(vcount),.vsync(vsync),.hsync(hsync),.blank(blank), .score(score),
                 		.speed(d_offset), .char_frame(char_frame), .p_obj1(obj1),.p_obj2(obj2),
                 		.seed({2{SW[15:0]}}),.p_obj3(obj3), .p_obj4(obj4),.p_obj5(obj5),
                 		.freq_id1(freq_id1),.freq_id2(freq_id2),.new_freq(new_f));
-
     
     
     
@@ -221,8 +218,7 @@ module nexys(
     //test outputs
     //assign data[11:0] = {1'b0, reset_count}; //last three digits disp_wave
     //assign data[31:20] = {period0}; //first three digits wave_index
-
-    assign data[31:0] = {24'b0,score};
+    assign data[31:0]=score;
     assign LED[0] = 1;
     assign LED[1] = curr_w0;//up;
     assign LED[6:3] = wave_ready;

@@ -40,6 +40,7 @@ module display(input reset,
     //sprite pixel outputs
     wire [11:0] character_rgb;
     wire [11:0] obj_rgb[4:0];
+    wire [11:0] shark_rgb[4:0];
     wire [11:0] l_bg_rgb;
     wire [11:0] u_bg_rgb;
     
@@ -55,8 +56,30 @@ module display(input reset,
                            (.vclock(vclock), .hcount(hcount), .x(obj[0][20:10]), .vcount(vcount),
                            .y(obj[0][9:0]), .s_type(obj[0][22:21]), .curr_frame(obj[0][25:23]), .p_rgb(obj_rgb[0])
                            );
-    
-    
+                           
+    coll_sprite #(.WIDTH(15), .HEIGHT(16), .LOG_FRAMES(3)) object2
+                          (.vclock(vclock), .hcount(hcount), .x(obj[1][20:10]), .vcount(vcount),
+                          .y(obj[1][9:0]), .s_type(obj[1][22:21]), .curr_frame(obj[1][25:23]), .p_rgb(obj_rgb[1])
+                          );
+
+    coll_sprite #(.WIDTH(15), .HEIGHT(16), .LOG_FRAMES(3)) object3
+                         (.vclock(vclock), .hcount(hcount), .x(obj[2][20:10]), .vcount(vcount),
+                         .y(obj[2][9:0]), .s_type(obj[2][22:21]), .curr_frame(obj[02][25:23]), .p_rgb(obj_rgb[2])
+                         );
+    // shark sprites
+    shark_sprite #(.WIDTH(40), .HEIGHT(20), .LOG_FRAMES(3)) shark1
+                          (.vclock(vclock), .hcount(hcount), .x(obj[0][20:10]), .vcount(vcount),
+                          .y(obj[0][9:0]), .s_type(obj[0][22:21]), .curr_frame(obj[0][25:23]), .p_rgb(shark_rgb[0])
+                          );
+    shark_sprite #(.WIDTH(40), .HEIGHT(20), .LOG_FRAMES(3)) shark2
+                        (.vclock(vclock), .hcount(hcount), .x(obj[1][20:10]), .vcount(vcount),
+                        .y(obj[1][9:0]), .s_type(obj[1][22:21]), .curr_frame(obj[1][25:23]), .p_rgb(shark_rgb[1])
+                        );
+                                                    
+    shark_sprite #(.WIDTH(40), .HEIGHT(20), .LOG_FRAMES(3)) shark3
+                          (.vclock(vclock), .hcount(hcount), .x(obj[2][20:10]), .vcount(vcount),
+                          .y(obj[2][9:0]), .s_type(obj[2][22:21]), .curr_frame(obj[2][25:23]), .p_rgb(shark_rgb[2])
+                          );
     
     //background declarations
     background #(.ABOVE(0)) lower_background
@@ -98,6 +121,21 @@ module display(input reset,
             else if(obj[0] && obj_rgb[0]) begin //otherwise use collectable data
                 p_rgb <= obj_rgb[0];
             end
+            else if(obj[1] && obj_rgb[1]) begin //otherwise use collectable data
+                p_rgb <= obj_rgb[1];
+            end
+            else if(obj[2] && obj_rgb[2]) begin //otherwise use collectable data
+                p_rgb <= obj_rgb[2];
+            end
+            else if(obj[0] && shark_rgb[0]) begin //otherwise use collectable data
+                p_rgb <= shark_rgb[0];
+            end
+            else if(obj[1] && shark_rgb[1]) begin //otherwise use collectable data
+                p_rgb <= shark_rgb[1];
+            end
+            else if(obj[2] && shark_rgb[2]) begin //otherwise use collectable data
+                p_rgb <= shark_rgb[2];
+            end      
             else if (l_bg_rgb) begin //otherwise use lower background data
                 p_rgb <= l_bg_rgb;
             end
@@ -141,6 +179,45 @@ module coll_sprite #(parameter WIDTH=15,
     
     
     collectable_rom #(.WIDTH(WIDTH),.HEIGHT(HEIGHT),.LOG_FRAMES(LOG_FRAMES)) rom (.x(p_x), .y(p_y), .s_type(s_type), .frame(curr_frame), .pixel(p_rom));
+    //on the rising edge of vclock
+    always @(posedge vclock) begin
+        
+        //assign new pixel value
+        if (within_limits) begin //if within box
+            p_rgb <= p_rom; //for now, within the square is green
+        end
+        else begin //otherwise
+            p_rgb <= 12'h000; //elsewhere is empty.
+        end
+    end
+    
+endmodule
+
+//////////////////////////////////////////////////////////
+//    
+//    Produces the pixel as affected by a shark sprite
+//    
+//////////////////////////////////////////////////////////
+module shark_sprite #(parameter WIDTH=40,
+                parameter HEIGHT=20,
+                parameter LOG_FRAMES=3)
+               (input vclock,
+                input [10:0] hcount, x,
+                input [9:0] vcount, y,
+                input [2:0] s_type, //type of sprite: 1 is shark sprite
+                input [LOG_FRAMES-1:0] curr_frame,
+                output reg [11:0] p_rgb
+                );
+    
+    wire [10:0] p_x, p_y; //relative x or y within sprite bounds
+    wire within_limits; //1 if hcount and vcount currently within the sprite bounds
+    assign within_limits = (hcount < x + WIDTH) & (hcount >= x) & (vcount < y + HEIGHT) & (vcount >= y);
+    assign p_x = hcount - x;
+    assign p_y = vcount - y;
+    wire [11:0] p_rom; //output pixel from rom
+    
+    
+    shark_rom #(.WIDTH(WIDTH),.HEIGHT(HEIGHT),.LOG_FRAMES(LOG_FRAMES)) rom (.x(p_x), .y(p_y), .s_type(s_type), .frame(curr_frame), .pixel(p_rom));
     //on the rising edge of vclock
     always @(posedge vclock) begin
         
