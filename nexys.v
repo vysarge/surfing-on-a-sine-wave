@@ -166,6 +166,8 @@ module nexys(
     
     
     always @(posedge clock_65mhz) begin
+        
+        
         //updating previous variables
         prev_disp_sel <= disp_sel;
         prev_up <= up;
@@ -181,6 +183,7 @@ module nexys(
         else begin
             new_f <= 0;
         end
+        
         
         
         //update player position
@@ -217,7 +220,7 @@ module nexys(
     
     physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .d_offset(d_offset), .r_offset(up), .hcount(hcount),
                     .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f_in(new_f),
-                    .player_profile(p_height), .wave_profile(disp_wave)
+                    .player_profile(p_height), .wave_profile(disp_wave), .curr_w0(curr_w0), .wave_ready(wave_ready)
                     );
     
     

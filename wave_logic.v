@@ -5,7 +5,7 @@
 // Wave computation module.
 // 
 // Instructions for use:
-//          1. Input frequency id and pulse new_f high for one clock cycle.  0 is lowest, 24 is highest.
+//          1. Input frequency id and assert new_f.  0 is lowest, 24 is highest.
 //          2. wave_ready asserted for one clock cycle when computation has finished and values can be read from the module.
 //          3. To read a value, set index and read wave_height after a clock cycle has passed.
 // 
@@ -46,6 +46,7 @@ module wave_logic #(parameter LOG_WIDTH=10, //log of horizontal values
     end
     
     always @(posedge clock) begin
+        
         
         wave_height <= waveform[index];
         

@@ -13,7 +13,7 @@
     //hcount is hcount
     //freq_id1 and freq_id2 are frequency id inputs, ranging from 0 to 24.  
         //A value of 31 means no frequency input in that channel, so 0, 1, or 2 frequency inputs can be used.
-    //new_f_in is asserted for one cycle of vsync when a new frequency id is input.
+    //new_f_in is asserted for one clock cycle when a new frequency id is input.
     //player_profile is the output corresponding to the player's vertical position.
     //wave_profile is the output corresponding to the wave's vertical height at that hcount and offset.
     //Outputs appear with a 6-cycle delay after their corresponding hcount is input.
@@ -29,9 +29,11 @@ module physics(input reset,
                input [10:0] hcount, //current hcount of requested pixel
                input [4:0] freq_id1, //frequency id from keyboard; 0 is lowest, 24 highest.
                input [4:0] freq_id2, //5'b11111 if no second frequency
-               input new_f_in, //asserted for one vsync when a new frequency is available from the keyboard
+               input new_f_in, //asserted for one clock when a new frequency is available from the keyboard
                output reg [9:0] player_profile, //where the player will be vertically.  Affected by prior frequency
-               output reg [9:0] wave_profile //waveform to be displayed.  Affected only by current frequency
+               output reg [9:0] wave_profile, //waveform to be displayed.  Affected only by current frequency
+               output reg curr_w0,
+               output reg [3:0] wave_ready
                );
     
     //calculation variables
@@ -43,18 +45,19 @@ module physics(input reset,
     reg [12:0] offset_p1 [3:0]; //temp calculation holder
     reg [12:0] offset_p2 [3:0]; //temp calculation holder
     reg [10:0] hcount_p [3:0]; //value + hcount
-    reg curr_w0; //1 if 0 and 1 were most recently updated
+    //reg curr_w0; //1 if 0 and 1 were most recently updated
     
     //embedded wave_logic modules
     reg [4:0] freq_id [3:0];
     wire [10:0] freq [3:0];
     reg [3:0] new_f;
+    
     reg [2:0] quotient[3:0];
     reg [9:0] height[3:0];
     wire [9:0] height_out[3:0];
     wire [10:0] period[3:0];
     wire [3:0] ready;
-    reg [3:0] wave_ready; //persistent record of ready[3:0]
+    //reg [3:0] wave_ready; //persistent record of ready[3:0]
     
     
     //wave logic modules
@@ -139,7 +142,9 @@ module physics(input reset,
                     
                 end
                 else begin //if already one clock cycle (or more) since sending new frequencies to wave_logic
-                    offset_p2[2] <= {11'b0,offset_p1[2]}*period[2] >> 10; //multiply offsets by new period
+                    //offset_p2[2] <= {11'b0,offset_p1[2]}*period[2] >> 10; //multiply offsets by new period
+                    
+                    offset_p2[2] <= 0;
                     //offset_p2 <= period[2]*{11'b0, freq[0]} >> 10;
                 end
             end
@@ -162,10 +167,12 @@ module physics(input reset,
                 
                 if (~new_f[0]) begin
                     offset_p1[0] <= offset_p[2]*{11'b0, freq[2]} >> 8; //divide offsets by old period
+                    
                     //offset_p0 <= offset_p[2]*{11'b0, freq[2]} >> 8;
                 end
                 else begin
-                    offset_p2[0] <= {11'b0,offset_p1[0]}*period[0] >> 10; //multiply offsets by new period
+                    //offset_p2[0] <= {11'b0,offset_p1[0]}*period[0] >> 10; //multiply offsets by new period
+                    offset_p2[0] <= 0;
                 end
             end
             else begin
