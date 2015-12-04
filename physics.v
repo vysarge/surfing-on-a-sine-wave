@@ -33,7 +33,8 @@ module physics(input reset,
                output reg [9:0] player_profile, //where the player will be vertically.  Affected by prior frequency
                output reg [9:0] wave_profile, //waveform to be displayed.  Affected only by current frequency
                output reg curr_w0,
-               output reg [3:0] wave_ready
+               output reg [12:0] offset_p10,
+               output reg [12:0] offset_p12
                );
     
     //calculation variables
@@ -44,8 +45,15 @@ module physics(input reset,
     reg [10:0] offset_p [3:0]; //offset trimmed to periods
     reg [12:0] offset_p1 [3:0]; //temp calculation holder
     reg [12:0] offset_p2 [3:0]; //temp calculation holder
+    reg [1:0] offset_change; //from clock to vsync
+    reg [1:0] offset_received; //from vsync back to clock
+    reg [1:0] offset_calc; //within clock
+    wire [1:0] offset_calcp; //delayed by some number of cycles to allow frequency to update
     reg [10:0] hcount_p [3:0]; //value + hcount
     //reg curr_w0; //1 if 0 and 1 were most recently updated
+    
+    
+    pipeliner #(.CYCLES(4), .LOG(3), .WIDTH(2)) p_hcount (.reset(reset), .clock(clock), .in(offset_calc), .out(offset_calcp));
     
     //embedded wave_logic modules
     reg [4:0] freq_id [3:0];
@@ -57,7 +65,7 @@ module physics(input reset,
     wire [9:0] height_out[3:0];
     wire [10:0] period[3:0];
     wire [3:0] ready;
-    //reg [3:0] wave_ready; //persistent record of ready[3:0]
+    reg [3:0] wave_ready; //persistent record of ready[3:0]
     
     
     //wave logic modules
@@ -84,11 +92,14 @@ module physics(input reset,
         offset_p[1] <= 0;
         offset_p[2] <= 0;
         offset_p[3] <= 0;
+        offset_change <= 0;
+        offset_received <= 0;
     end
     
     //at each new clock cycle (pixel)
     always @(posedge clock) begin
-        
+        offset_p10 <= offset_p1[0];
+        offset_p12 <= offset_p1[2];
         
         //calculating index (total offset within a period), which is equal to (offset + hcount) % period
         //number of periods within offset_p+hcount
@@ -113,8 +124,34 @@ module physics(input reset,
         index[2] <= (period[2]*quotient[2] > offset_p[2] + hcount) ? 0 : offset_p[2] + prev_hcount - period[2]*quotient[2]-1;
         index[3] <= (period[3]*quotient[3] > offset_p[3] + hcount) ? 0 : offset_p[3] + prev_hcount - period[3]*quotient[3]-1;
         
+        //semaphores.  if vsync has acknowledged receipt, reset semaphores.
+        if (offset_received[0]) begin
+            offset_change[0] <= 0;
+        end
+        if (offset_received[1]) begin
+            offset_change[1] <= 0;
+        end
         
-        
+        //only asserted for one clock cycle
+        if (offset_calc[0]) begin
+            offset_calc[0] <= 0;
+        end
+        if (offset_calc[1]) begin
+            offset_calc[1] <= 0;
+        end
+        //if calculating next offset
+        if (offset_calcp[0]) begin
+            offset_p2[0] <= {11'b0,offset_p1[0]}*period[0] >> 10; //multiply offsets by new period
+            offset_p2[1] <= {11'b0,offset_p1[1]}*period[1] >> 10; //multiply offsets by new period
+            
+            offset_change[0] <= 1; //signal vsync
+        end
+        if (offset_calcp[1]) begin
+            offset_p2[2] <= {11'b0,offset_p1[2]}*period[2] >> 10; //multiply offsets by new period
+            offset_p2[3] <= {11'b0,offset_p1[3]}*period[3] >> 10; //multiply offsets by new period
+            
+            offset_change[1] <= 1;
+        end
         
         //if new frequency
         if (new_f_in || reset) begin
@@ -136,17 +173,12 @@ module physics(input reset,
                 freq_id[3] <= freq_id2; //update freq_ids for waveform calculation
                 new_f[2] <= 1;
                 new_f[3] <= 1;
-                if (~new_f[2]) begin //if this is the first clock cycle after the new frequency input
-                    offset_p1[2] <= offset_p[0]*{11'b0, freq[0]} >> 8; //divide offsets by old period
-                    
-                    
-                end
-                else begin //if already one clock cycle (or more) since sending new frequencies to wave_logic
-                    //offset_p2[2] <= {11'b0,offset_p1[2]}*period[2] >> 10; //multiply offsets by new period
-                    
-                    offset_p2[2] <= 0;
-                    //offset_p2 <= period[2]*{11'b0, freq[0]} >> 10;
-                end
+                
+                //start calculating new offset
+                offset_p1[2] <= offset_p[0]*{11'b0, freq[0]} >> 8; //divide offsets by old period
+                offset_p1[3] <= offset_p[1]*{11'b0, freq[1]} >> 8; //divide offsets by old period
+                offset_calc[1] <= 1;
+                
             end
             else begin
                 new_f[2] <= 0;
@@ -165,15 +197,12 @@ module physics(input reset,
                 new_f[0] <= 1;
                 new_f[1] <= 1;
                 
-                if (~new_f[0]) begin
-                    offset_p1[0] <= offset_p[2]*{11'b0, freq[2]} >> 8; //divide offsets by old period
-                    
-                    //offset_p0 <= offset_p[2]*{11'b0, freq[2]} >> 8;
-                end
-                else begin
-                    //offset_p2[0] <= {11'b0,offset_p1[0]}*period[0] >> 10; //multiply offsets by new period
-                    offset_p2[0] <= 0;
-                end
+                //start calculating offset
+                offset_p1[0] <= offset_p[2]*{11'b0, freq[2]} >> 8; //divide offsets by old period
+                offset_p1[1] <= offset_p[3]*{11'b0, freq[3]} >> 8; //divide offsets by old period
+                offset_calc[0] <= 1;
+                
+                
             end
             else begin
                 new_f[0] <= 0;
@@ -184,19 +213,29 @@ module physics(input reset,
     
     //at each frame
     always @(negedge vsync) begin
+        
         if (r_offset) begin //if offset reset signal is asserted
             offset_p[0] <= 0;
             offset_p[1] <= 0; //reset
             offset_p[2] <= 0;
             offset_p[3] <= 0;
+            
+            offset_received[0] <= 0;
+            offset_received[1] <= 0;
         end
-        else if (new_f[0]) begin //shift in new calculated values
+        else if (offset_change[0]) begin //shift in new calculated values
             offset_p[0] <= offset_p2[0];
             offset_p[1] <= offset_p2[1];
+            
+            offset_received[0] <= 1; //acknowledge receipt of offsets
+            offset_received[1] <= 0;
         end
-        else if (new_f[2]) begin
+        else if (offset_change[1]) begin
             offset_p[2] <= offset_p2[2];
             offset_p[3] <= offset_p2[3];
+            
+            offset_received[0] <= 0;
+            offset_received[1] <= 1; //acknowledge receipt of offsets
         end
         else begin //ordinarily
             //offset_p[i] integrates d_offset, staying within period[i].
@@ -204,6 +243,9 @@ module physics(input reset,
             offset_p[1] <= (((offset_p[1] + d_offset) >= period[1]) ? ((offset_p[1] + d_offset)-period[1]) : ((offset_p[1] + d_offset)));
             offset_p[2] <= (((offset_p[2] + d_offset) >= period[2]) ? ((offset_p[2] + d_offset)-period[2]) : ((offset_p[2] + d_offset)));
             offset_p[3] <= (((offset_p[3] + d_offset) >= period[3]) ? ((offset_p[3] + d_offset)-period[3]) : ((offset_p[3] + d_offset)));
+            
+            offset_received[0] <= 0;
+            offset_received[1] <= 0;
         end
         
         

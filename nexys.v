@@ -220,7 +220,7 @@ module nexys(
     
     physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .d_offset(d_offset), .r_offset(up), .hcount(hcount),
                     .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f_in(new_f),
-                    .player_profile(p_height), .wave_profile(disp_wave), .curr_w0(curr_w0), .wave_ready(wave_ready)
+                    .player_profile(p_height), .wave_profile(disp_wave), .curr_w0(curr_w0), .offset_p10(offset_p0), .offset_p12(offset_p2)
                     );
     
     
