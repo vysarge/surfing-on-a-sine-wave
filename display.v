@@ -30,7 +30,8 @@ module display(input reset,
                input hsync,  //active low
                input vsync,  //active low
                input blank,
-               output reg [11:0] p_rgb
+               output reg [11:0] p_rgb,
+               output reg [10:0] parallax_offset=0
                );
     
     //storing inputs from last clock cycle
@@ -43,6 +44,7 @@ module display(input reset,
     wire [11:0] shark_rgb[4:0];
     wire [11:0] l_bg_rgb;
     wire [11:0] u_bg_rgb;
+    wire [11:0] sky_rgb;
     
     //sprite declarations
     //character
@@ -80,7 +82,10 @@ module display(input reset,
                           (.vclock(vclock), .hcount(hcount), .x(obj[2][20:10]), .vcount(vcount),
                           .y(obj[2][9:0]), .s_type(obj[2][22:21]), .curr_frame(obj[2][25:23]), .p_rgb(shark_rgb[2])
                           );
-    
+    //sky sprite
+    sky_sprite #( .WIDTH(1024), .HEIGHT(512)) sky
+                   (.vclock(vclock),.hcount(hcount), .x(0), .vcount(vcount), .y(0),.offset(parallax_offset),
+                    .p_rgb(sky_rgb));
     //background declarations
     background #(.ABOVE(0)) lower_background
                 (.vclock(vclock), .hcount(hcount), .vcount(vcount), .prof_hcount(wave_prof), .p_rgb(l_bg_rgb));
@@ -96,6 +101,8 @@ module display(input reset,
     
     //at each new frame
     reg [10:0] i;
+    reg [2:0] parallax_count=0;
+    //reg [10:0] parallax_offset=0;
     always @(negedge vsync) begin
         //update values
         vpos <= p_vpos;
@@ -104,6 +111,9 @@ module display(input reset,
         obj[2] <= p_obj3;
         obj[3] <= p_obj4;
         obj[4] <= p_obj5;
+        
+        parallax_count<=parallax_count+1;
+        if (parallax_count  == 0) parallax_offset<= parallax_offset+1;
         
     end
     
@@ -135,12 +145,12 @@ module display(input reset,
             end
             else if(obj[2] && shark_rgb[2]) begin //otherwise use collectable data
                 p_rgb <= shark_rgb[2];
-            end      
-            else if (l_bg_rgb) begin //otherwise use lower background data
-                p_rgb <= l_bg_rgb;
             end
             else if (u_bg_rgb) begin
-                p_rgb <= u_bg_rgb; //otherwise use upper background data
+                p_rgb <= sky_rgb; //otherwise use upper background data
+            end    
+            else if (l_bg_rgb) begin //otherwise use lower background data
+                p_rgb <= l_bg_rgb;
             end
             else begin //if no data exists for this pixel
                 p_rgb <= 12'hF0F; //default display magenta
@@ -276,6 +286,38 @@ endmodule
 //    Produces the pixel as affected by a background portion
 //    
 //////////////////////////////////////////////////////////
+
+module sky_sprite #(parameter WIDTH=1024,
+                parameter HEIGHT=512)
+               (input vclock,
+                input [10:0] hcount, x,
+                input [9:0] vcount, y,
+                input [10:0] offset,
+                output reg [11:0] p_rgb
+                );
+    
+    wire [10:0] p_x, p_y; //relative x or y within sprite bounds
+    wire within_limits; //1 if hcount and vcount currently within the sprite bounds
+    //assign within_limits = (hcount < x + WIDTH) & (hcount >= x) & (vcount < y + HEIGHT) & (vcount >= y);
+    assign p_x[9:0] = hcount - x+offset;
+    assign p_y = vcount - y;
+    wire [11:0] p_rom; //output pixel from rom
+    
+    
+    background_rom #(.WIDTH(WIDTH),.HEIGHT(HEIGHT)) rom (.x(p_x), .y(p_y), .pixel(p_rom));
+    //on the rising edge of vclock
+    always @(posedge vclock) begin
+        
+        //assign new pixel value
+        //if (within_limits) begin //if within box
+        p_rgb <= p_rom; //for now, within the square is green
+        //end
+        //else begin //otherwise
+            //p_rgb <= 12'h000; //elsewhere is empty.
+        //end
+    end
+    
+endmodule
 module background #(parameter ABOVE=0, //1 if above dividing profile
                     parameter CENTER=382 //vertical value of center of screen
                     ) 

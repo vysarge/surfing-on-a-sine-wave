@@ -94,7 +94,7 @@ module game_logic
                             score<=score+1;
                             p_obj1<=0;
                         end
-                    end else if ( random[23:20] == 0 ) begin
+                    end else if ( random[19:14] == 0 ) begin
                         p_obj1[21]=random[3];
                         p_obj1[20:10] <= SCREEN_WIDTH;
                         p_obj1[9:0] <= 10'd220+random[7:0];
@@ -117,7 +117,7 @@ module game_logic
                             score<=score+1;
                             p_obj2<=0;
                         end
-                    end else if ( random[27:24] == 0 ) begin
+                    end else if ( random[25:20] == 0 ) begin
                         p_obj2[21]=random[1];
                         p_obj2[20:10] <= SCREEN_WIDTH;
                         p_obj2[9:0] <= 10'd220+random[8:1];
@@ -140,7 +140,7 @@ module game_logic
                             score<=score+1;
                             p_obj3<=0;
                         end
-                    end else if (random[31:28] == 0 ) begin
+                    end else if (random[31:26] == 0 ) begin
                         p_obj3[21]=random[0];
                         p_obj3[20:10] <= SCREEN_WIDTH;
                         p_obj3[9:0] <= 10'd220+random[9:2];
