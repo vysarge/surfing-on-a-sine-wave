@@ -31,10 +31,7 @@ module physics(input reset,
                input [4:0] freq_id2, //5'b11111 if no second frequency
                input new_f_in, //asserted for one clock when a new frequency is available from the keyboard
                output reg [9:0] player_profile, //where the player will be vertically.  Affected by prior frequency
-               output reg [9:0] wave_profile, //waveform to be displayed.  Affected only by current frequency
-               output reg curr_w0,
-               output reg [12:0] offset_p10,
-               output reg [12:0] offset_p12
+               output reg [9:0] wave_profile //waveform to be displayed.  Affected only by current frequency
                );
     
     //calculation variables
@@ -50,7 +47,7 @@ module physics(input reset,
     reg [1:0] offset_calc; //within clock
     wire [1:0] offset_calcp; //delayed by some number of cycles to allow frequency to update
     reg [10:0] hcount_p [3:0]; //value + hcount
-    //reg curr_w0; //1 if 0 and 1 were most recently updated
+    reg curr_w0; //1 if 0 and 1 were most recently updated
     
     
     pipeliner #(.CYCLES(4), .LOG(3), .WIDTH(2)) p_hcount (.reset(reset), .clock(clock), .in(offset_calc), .out(offset_calcp));
@@ -98,8 +95,7 @@ module physics(input reset,
     
     //at each new clock cycle (pixel)
     always @(posedge clock) begin
-        offset_p10 <= offset_p1[0];
-        offset_p12 <= offset_p1[2];
+        
         
         //calculating index (total offset within a period), which is equal to (offset + hcount) % period
         //number of periods within offset_p+hcount
