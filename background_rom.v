@@ -2,21 +2,20 @@ module background_rom #(parameter WIDTH = 1024,
                     parameter HEIGHT = 512)
                    (input [10:0] x,
                    input [9:0] y,
-                   input [10:0] offset,
                    output reg [11:0]  pixel);
     
-    reg[WIDTH*12-1:0] horiz; //a horizontal strip of pixels
+    reg[(WIDTH>>4)*12-1:0] horiz; //a horizontal strip of pixels
     //selects the correct pixel from the horizontal strip
     
     always @(x, horiz) begin
-        pixel = (horiz >> 12*((WIDTH - x+offset)>>5) - 12));
+        pixel = horiz >> (12*((WIDTH - x)>>4) - 12);
         //[WIDTH*12-1-x*12:WIDTH*12-13-x*12];
     end
     
     
     //for current y, return the corresponding pixel strip
     always @(y) begin
-        case(y[9:5]) 
+        case(y[8:4]) 
             8'b00000: horiz=768'h_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf;
 			8'b00001: horiz=768'h_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf;
 			8'b00010: horiz=768'h_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf;
