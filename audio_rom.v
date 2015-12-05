@@ -12,13 +12,14 @@
 module audio_rom #(parameter BITS = 6)
                 (input [10:0] index, // horizontal input
                 input [4:0] freq_id, // frequency id on a 25-tone midi keyboard, 0 is lowest
-                output reg [BITS-1:0] value, // vertical value
+                output reg [BITS-1:0] level, // vertical value
                 output reg [10:0] freq, // proportional to frequency; adjusted so that freq*period = 2^16
-                output reg [10:0] period //output period
+                output reg [15:0] period //output period
                 ); 
     
     
     reg [10:0] c_index; //adjusted index
+    reg [10:0] value; //vertical value, 11 bits
     
     always @(*) begin
         
@@ -39,36 +40,39 @@ module audio_rom #(parameter BITS = 6)
         //frequency and period values
         case(freq_id)
             
-            5'd0: begin freq = 11'd256; period = 11'd1024; end
-            5'd1: begin freq = 11'd271; period = 11'd967; end
-            5'd2: begin freq = 11'd287; period = 11'd912; end
-            5'd3: begin freq = 11'd304; period = 11'd861; end
-            5'd4: begin freq = 11'd323; period = 11'd813; end
-            5'd5: begin freq = 11'd342; period = 11'd767; end
-            5'd6: begin freq = 11'd362; period = 11'd724; end
-            5'd7: begin freq = 11'd384; period = 11'd683; end
-            5'd8: begin freq = 11'd406; period = 11'd645; end
-            5'd9: begin freq = 11'd431; period = 11'd609; end
-            5'd10: begin freq = 11'd456; period = 11'd575; end
-            5'd11: begin freq = 11'd483; period = 11'd542; end
-            5'd12: begin freq = 11'd512; period = 11'd512; end
-            5'd13: begin freq = 11'd542; period = 11'd483; end
-            5'd14: begin freq = 11'd575; period = 11'd456; end
-            5'd15: begin freq = 11'd609; period = 11'd431; end
-            5'd16: begin freq = 11'd645; period = 11'd406; end
-            5'd17: begin freq = 11'd683; period = 11'd384; end
-            5'd18: begin freq = 11'd724; period = 11'd362; end
-            5'd19: begin freq = 11'd767; period = 11'd342; end
-            5'd20: begin freq = 11'd813; period = 11'd323; end
-            5'd21: begin freq = 11'd861; period = 11'd304; end
-            5'd22: begin freq = 11'd912; period = 11'd287; end
-            5'd23: begin freq = 11'd967; period = 11'd271; end
-            5'd24: begin freq = 11'd1024; period = 11'd256; end
+            5'd0: begin freq = 11'd135; period = 11'd485; end
+            5'd1: begin freq = 11'd143; period = 11'd458; end
+            5'd2: begin freq = 11'd152; period = 11'd432; end
+            5'd3: begin freq = 11'd161; period = 11'd408; end
+            5'd4: begin freq = 11'd170; period = 11'd385; end
+            5'd5: begin freq = 11'd180; period = 11'd364; end
+            5'd6: begin freq = 11'd191; period = 11'd343; end
+            5'd7: begin freq = 11'd202; period = 11'd324; end
+            5'd8: begin freq = 11'd214; period = 11'd306; end
+            5'd9: begin freq = 11'd227; period = 11'd289; end
+            5'd10: begin freq = 11'd241; period = 11'd272; end
+            5'd11: begin freq = 11'd255; period = 11'd257; end
+            5'd12: begin freq = 11'd270; period = 11'd243; end
+            5'd13: begin freq = 11'd286; period = 11'd229; end
+            5'd14: begin freq = 11'd303; period = 11'd216; end
+            5'd15: begin freq = 11'd321; period = 11'd204; end
+            5'd16: begin freq = 11'd340; period = 11'd193; end
+            5'd17: begin freq = 11'd361; period = 11'd182; end
+            5'd18: begin freq = 11'd382; period = 11'd172; end
+            5'd19: begin freq = 11'd405; period = 11'd162; end
+            5'd20: begin freq = 11'd429; period = 11'd153; end
+            5'd21: begin freq = 11'd454; period = 11'd144; end
+            5'd22: begin freq = 11'd481; period = 11'd136; end
+            5'd23: begin freq = 11'd510; period = 11'd129; end
+            5'd24: begin freq = 11'd540; period = 11'd121; end
             5'd31: begin freq = 11'd0; period = 11'd1; end
             
-            default: begin freq = 11'd256; period = 11'd1024; end
+            default: begin freq = 11'd256; period = 11'd243; end
         endcase
-
+        
+        
+        level <= (value >> 10 - BITS);
+        
         //sine values
         case(c_index)
             9'd000: value = 10'd0;

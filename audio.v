@@ -20,13 +20,14 @@ module audio #(parameter BITS = 6 //bit resolution of audio output
     
     wire [BITS-1:0] level[3:0];
     
-    audio_wave #(.BITS(6)) audio_wave (.reset(reset), .clock(clock), .freq_id(freq_id1), .new_f(new_f), .level(level[0]));
+    audio_wave #(.BITS(6)) audio_wave0 (.reset(reset), .clock(clock), .freq_id(freq_id1), .new_f(new_f), .level(level[0]));
+    audio_wave #(.BITS(6)) audio_wave1 (.reset(reset), .clock(clock), .freq_id(freq_id2), .new_f(new_f), .level(level[1]));
     
     
     
     always @(posedge clock) begin //65mhz
          
-         curr_level <= level[0];
+         curr_level <= (level[0]+level[1])>>1;
          
          //increment count
          count <= count + 1;
