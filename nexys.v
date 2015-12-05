@@ -15,7 +15,9 @@ module nexys(
    output LED17_B, LED17_G, LED17_R,
    output[15:0] LED,
    output[7:0] SEG,  // segments A-G (0-6), DP (7)
-   output[7:0] AN    // Display 0-7
+   output[7:0] AN,    // Display 0-7
+   output AUD_PWM,
+   output AUD_SD
    );
     
     //65MHz clock generation from IP
@@ -25,6 +27,8 @@ module nexys(
     wire locked;
     wire clock_65mhz;
     wire clock_25mhz;
+    
+    
     
     clk_wiz_0 gen(.clk_100mhz(CLK100MHZ), .clk_65mhz(clock_65mhz), .clk_25mhz(clock_25mhz), .reset(clk_reset), .locked(locked));
     
@@ -232,6 +236,12 @@ module nexys(
                     .p_obj1(obj1), .p_obj2(obj2), .p_obj3(obj3), .p_obj4(obj4), .p_obj5(obj5),
                     .hsync(prev_hsync), .vsync(prev_vsync), .blank(prev_blank), .p_rgb(p_rgb));
     
+    
+    assign AUD_SD = 1;
+    
+    
+    audio audio(.reset(reset), .clock(clock_65mhz), .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f(new_f), 
+                .pwm(AUD_PWM));
     
     
     assign VGA_R = prev3_blank ? 0: p_rgb[11:8];
