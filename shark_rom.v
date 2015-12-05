@@ -97,3 +97,50 @@ module shark_rom #(parameter WIDTH = 40,
     
 endmodule
 
+module heart_rom #(parameter WIDTH = 80,
+                    parameter HEIGHT = 80,
+                    parameter LOG_FRAMES = 1)
+                   (input [10:0] x,
+                   input [9:0] y,
+                   input [2:0] s_type,
+                   input [LOG_FRAMES-1:0] frame,
+                   output reg [11:0]  pixel);
+    
+    reg[WIDTH*12-1:0] horiz; //a horizontal strip of pixels
+    //selects the correct pixel from the horizontal strip
+    
+    always @(x, horiz) begin
+        pixel = (horiz >> ((WIDTH  - (x>>3))*12 - 12));
+        //[WIDTH*12-1-x*12:WIDTH*12-13-x*12];
+    end
+    
+    
+    //for current y and frame, return the corresponding pixel strip
+    always @(y, frame) begin
+        casex({frame,y[6:3]}) 
+        	5'b0_0000: horiz=120'h_000_222_222_222_000_000_222_222_222_000;
+			5'b0_0001: horiz=120'h_222_733_a23_b23_222_322_a23_b23_633_222;
+			5'b0_0010: horiz=120'h_122_923_b22_b22_221_311_b22_b22_823_122;
+			5'b0_0011: horiz=120'h_122_923_b22_b22_b22_b22_b22_b22_823_122;
+			5'b0_0100: horiz=120'h_122_923_b22_b22_b22_b22_b22_b22_823_212;
+			5'b0_0101: horiz=120'h_121_823_923_b22_b22_b22_b22_933_623_211;
+			5'b0_0110: horiz=120'h_000_222_221_c12_b22_c12_c12_221_222_000;
+			5'b0_0111: horiz=120'h_000_000_000_212_b23_a23_122_000_000_000;
+			5'b0_1000: horiz=120'h_000_000_000_ccc_411_412_ccc_000_000_000;
+			5'b0_1001: horiz=120'h_000_000_000_000_211_222_000_000_000_000;
+
+			5'b1_0000: horiz=120'h_000_112_222_222_000_000_222_222_555_000;
+			5'b1_0001: horiz=120'h_222_ccc_ccc_bbb_222_222_ccc_ccc_666_222;
+			5'b1_0010: horiz=120'h_222_999_000_000_222_222_000_000_999_222;
+			5'b1_0011: horiz=120'h_222_000_000_000_000_000_000_000_999_222;
+			5'b1_0100: horiz=120'h_222_000_000_000_000_000_000_000_999_222;
+			5'b1_0101: horiz=120'h_222_000_000_000_000_000_000_000_999_222;
+			5'b1_0110: horiz=120'h_000_222_222_000_000_000_000_222_555_000;
+			5'b1_0111: horiz=120'h_000_000_000_222_000_000_222_000_000_000;
+			5'b1_1000: horiz=120'h_000_000_000_222_000_000_222_000_000_000;
+			5'b1_1001: horiz=120'h_000_000_000_000_222_222_000_000_000_000;
+
+			default: horiz=0;
+		endcase
+	end
+endmodule
