@@ -110,7 +110,7 @@ module heart_rom #(parameter WIDTH = 80,
     //selects the correct pixel from the horizontal strip
     
     always @(x, horiz) begin
-        pixel = (horiz >> ((WIDTH  - (x>>3))*12 - 12));
+        pixel = horiz >> (((WIDTH  - x)>>3)*12 - 12);
         //[WIDTH*12-1-x*12:WIDTH*12-13-x*12];
     end
     
@@ -157,7 +157,7 @@ module number_rom #(parameter WIDTH = 40,
     //selects the correct pixel from the horizontal strip
     
     always @(x, horiz) begin
-        pixel = (horiz >> ((WIDTH  - (x>>2))*12 - 12));
+        pixel = horiz >> (((WIDTH  - x)>>2)*12 - 12);
         //[WIDTH*12-1-x*12:WIDTH*12-13-x*12];
     end
     
