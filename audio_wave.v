@@ -18,7 +18,7 @@ module audio_wave #(parameter BITS = 6)
     reg [BITS-1:0] count;
     reg [15:0] count_index;
     wire [15:0] period;
-    wire [10:0] freq;
+    wire [15:0] freq;
     reg [4:0] freq_id_rom;
     //wire [BITS-1:0] value;
     
@@ -48,14 +48,14 @@ module audio_wave #(parameter BITS = 6)
             index <= next_index;
             
             //count_index loops between 0 and period
-            if (count_index >= (period << (BITS-2))) begin
+            if (count_index >= (period << (BITS-6))) begin
                 count_index <= 0;
             end
             else begin
                 count_index <= count_index + 1;
             end
             
-            /*if (count_index >= (period << (BITS-3))) begin
+            /*if (count_index >= (period >> (7-BITS))) begin
                 level <= 20;
             end
             else begin
@@ -63,7 +63,7 @@ module audio_wave #(parameter BITS = 6)
             end*/
             
             //calculate next index!
-            next_index <= {10'b0,count_index} * freq >> (BITS+4);
+            next_index <= {16'b0,count_index} * freq >> (BITS+8);
             
             
             
