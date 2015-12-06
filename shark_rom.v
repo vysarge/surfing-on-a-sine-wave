@@ -97,8 +97,9 @@ module shark_rom #(parameter WIDTH = 40,
     
 endmodule
 
-module heart_rom #(parameter WIDTH = 80,
-                    parameter HEIGHT = 80,
+module heart_rom #(parameter WIDTH = 40,
+                    parameter HEIGHT = 40,
+                    LG_SCALE=2,
                     parameter LOG_FRAMES = 1)
                    (input [10:0] x,
                    input [9:0] y,
@@ -106,18 +107,18 @@ module heart_rom #(parameter WIDTH = 80,
                    input [LOG_FRAMES-1:0] frame,
                    output reg [11:0]  pixel);
     
-    reg[WIDTH*12-1:0] horiz; //a horizontal strip of pixels
+    reg[(WIDTH>>LG_SCALE)*12-1:0] horiz; //a horizontal strip of pixels
     //selects the correct pixel from the horizontal strip
     
     always @(x, horiz) begin
-        pixel = horiz >> (((WIDTH  - x)>>3)*12 - 12);
+        pixel = horiz >> (((WIDTH  - x)>>LG_SCALE)*12 - 12);
         //[WIDTH*12-1-x*12:WIDTH*12-13-x*12];
     end
     
     
     //for current y and frame, return the corresponding pixel strip
     always @(y, frame) begin
-        casex({frame,y[6:3]}) 
+        casex({frame,y[LG_SCALE+4:LG_SCALE]}) 
         	5'b0_0000: horiz=120'h_000_222_222_222_000_000_222_222_222_000;
 			5'b0_0001: horiz=120'h_222_733_a23_b23_222_322_a23_b23_633_222;
 			5'b0_0010: horiz=120'h_122_923_b22_b22_221_311_b22_b22_823_122;
@@ -145,26 +146,27 @@ module heart_rom #(parameter WIDTH = 80,
 	end
 endmodule
 
-module number_rom #(parameter WIDTH = 40,
-                    parameter HEIGHT = 50,
+module number_rom #(parameter WIDTH = 20,
+                    parameter HEIGHT = 25,
+                    LG_SCALE=1,
                     parameter LOG_FRAMES = 4)
                    (input [10:0] x,
                    input [9:0] y,
                    input [LOG_FRAMES-1:0] frame,
                    output reg [11:0]  pixel);
     
-    reg[(WIDTH>>2)*12-1:0] horiz; //a horizontal strip of pixels
+    reg[(WIDTH>>LG_SCALE)*12-1:0] horiz; //a horizontal strip of pixels
     //selects the correct pixel from the horizontal strip
     
     always @(x, horiz) begin
-        pixel = horiz >> (((WIDTH  - x)>>2)*12 - 12);
+        pixel = horiz >> (((WIDTH  - x)>>LG_SCALE)*12 - 12);
         //[WIDTH*12-1-x*12:WIDTH*12-13-x*12];
     end
     
     
     //for current y and frame, return the corresponding pixel strip
     always @(y, frame) begin
-        casex({frame,y[5:2]}) 
+        casex({frame,y[LG_SCALE+4:LG_SCALE]}) 
         	9'b0000_0000: horiz=108'h_000_000_111_111_111_111_111_000_000;
 			9'b0000_0001: horiz=108'h_000_000_111_111_111_111_111_000_000;
 			9'b0000_0010: horiz=108'h_000_111_111_000_000_000_111_111_111;
