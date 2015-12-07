@@ -45,21 +45,22 @@ module audio #(parameter BITS = 6, //bit resolution of audio output
     reg [SIL_LENGTH-1:0] sil_counter;
     
     //information about notes
-    wire [4:0] freq_diff; //positive difference between notes
-    wire [4:0] lower_freq; //lower frequency
-    wire [4:0] higher_freq; //higher frequency; empty if only one frequency
-    wire two_freq; //1 if two frequencies; 0 if only one
+    reg [4:0] freq_diff; //positive difference between notes
+    reg [4:0] lower_freq; //lower frequency
+    reg [4:0] higher_freq; //higher frequency; empty if only one frequency
+    reg two_freq; //1 if two frequencies; 0 if only one
     //wire new_f_notes; //new_f for note audio_wave instances
     reg [4:0] base_freq; //frequency to be used as the 'base' (i/I chord) of the audio output
     reg [4:0] freq[3:0]; //frequencies to be played by the corresponding audio_wave instances
     reg [5:0] state; //chord state
     
-    //freq_diff is the positive difference between notes.
-    assign freq_diff = (freq_id1 > freq_id2) ? (freq_id1 - freq_id2) : (freq_id2 - freq_id1);
-    assign {lower_freq, higher_freq} = (freq_id1 > freq_id2) ? {freq_id2, freq_id1} : {freq_id1, freq_id2};
-    assign two_freq = (freq_id2 != 5'b11111);
+    wire new_f_delay;
+    pipeliner #(.CYCLES(1), .LOG(2), .WIDTH(1)) a0 (.reset(reset), .clock(clock), .in(new_f), .out(new_f_delay));
+    wire new_f_delay2;
+    pipeliner #(.CYCLES(2), .LOG(2), .WIDTH(1)) a1 (.reset(reset), .clock(clock), .in(new_f), .out(new_f_delay2));
     
-    pipeliner #(.CYCLES(10), .LOG(4), .WIDTH(1)) a0 (.reset(reset), .clock(clock), .in(new_f), .out(new_f_notes));
+    
+    pipeliner #(.CYCLES(10), .LOG(4), .WIDTH(1)) a2 (.reset(reset), .clock(clock), .in(new_f), .out(new_f_notes));
     audio_wave #(.BITS(6)) audio_wave0 (.reset(reset), .clock(clock), .form(form), .freq_id(freq[0]), .new_f(new_f_notes), .level(level[0]));
     audio_wave #(.BITS(6)) audio_wave1 (.reset(reset), .clock(clock), .form(form), .freq_id(freq[1]), .new_f(new_f_notes), .level(level[1]));
     audio_wave #(.BITS(6)) audio_wave2 (.reset(reset), .clock(clock), .form(form), .freq_id(freq[2]), .new_f(new_f_notes), .level(level[2]));
@@ -84,17 +85,25 @@ module audio #(parameter BITS = 6, //bit resolution of audio output
     always @(posedge clock) begin //65mhz
          
          
-         
-         if (new_f) begin
+         if (new_f) begin //when new_f goes high
+             //freq_diff is the positive difference between notes.
+             freq_diff <= (freq_id1 > freq_id2) ? (freq_id1 - freq_id2) : (freq_id2 - freq_id1);
+             {lower_freq, higher_freq} <= (freq_id1 > freq_id2) ? {freq_id2, freq_id1} : {freq_id1, freq_id2};
+             two_freq <= (freq_id2 != 5'b11111);
+         end 
+         if (new_f_delay) begin //one cycle later
+             base_freq <= (lower_freq < 13) ? lower_freq : (lower_freq - 12);
+         end
+         if (new_f_delay2) begin //one cycle later
              casez ({two_freq, freq_diff})
                  6'b0zzzzz: begin //only one frequency
-                                base_freq <= (lower_freq < 13) ? lower_freq : (lower_freq - 12);
-                                state = I;
+                                
+                                state <= I;
                                 
                                 freq[0] <= base_freq; //root
-                                                                      freq[1] <= base_freq + 4; //third
-                                                                      freq[2] <= base_freq + 7; //fifth
-                                                                      freq[3] <= base_freq + 12; //root
+                                freq[1] <= base_freq + 4; //third
+                                freq[2] <= base_freq + 7; //fifth
+                                freq[3] <= base_freq + 12; //root
                             end
              endcase
              
