@@ -8,10 +8,16 @@
 module audio_wave #(parameter BITS = 6)
                  (input reset,
                   input clock,
+                  input [1:0] form,
                   input [4:0] freq_id,
                   input new_f,
-                  output [BITS-1:0] level
+                  output reg [BITS-1:0] level
     );
+    
+    //parameters for types of waves
+    parameter SIN = 2'd0;
+    parameter TRI = 2'd1;
+    parameter SQ = 2'd2;
     
     reg [9:0] index; //current scaled horizontal index (512 is halfway through a period)
     reg [9:0] next_index;
@@ -20,9 +26,9 @@ module audio_wave #(parameter BITS = 6)
     wire [15:0] period;
     wire [15:0] freq;
     reg [4:0] freq_id_rom;
-    //wire [BITS-1:0] value;
+    wire [BITS-1:0] value;
     
-    audio_rom #(.BITS(6)) audio_rom(.index(index), .freq_id(freq_id_rom), .level(level), .freq(freq), .period(period));
+    audio_rom #(.BITS(6)) audio_rom(.index(index), .freq_id(freq_id_rom), .level(value), .freq(freq), .period(period));
     
     
     initial begin
@@ -65,6 +71,25 @@ module audio_wave #(parameter BITS = 6)
             //calculate next index!
             next_index <= {16'b0,count_index} * freq >> (BITS+8);
             
+            
+            if (form == SIN) begin
+                level <= value;
+            end
+            /*else if (form == TRI) begin
+                if (index < 256) level <= ((index) >> (BITS-2)) + 25;
+                else if (index < 512) level <= ((512-index) >> (BITS-2)) + 25;
+                else if (index < 768) level <= 25 - ((index - 512) >> (BITS-2));
+                else level <= 25 - ((1024 - index) >> (BITS-2));
+            end*/
+            else if (form == SQ) begin
+                if (index < 256) level <= 30;
+                else if (index < 512) level <= 0;
+                else if (index < 768) level <= 30;
+                else level <= 0;
+            end
+            else begin
+                level <= 0;
+            end
             
             
             //square wave

@@ -231,17 +231,28 @@ module nexys(
     
     
     
-    display display(.reset(reset), .p_vpos(p_vpos), .char_frame(SW[2:1]), .wave_prof(disp_wave), 
+    display display(.reset(reset), .p_vpos(p_vpos), .char_frame(0), .wave_prof(disp_wave), 
                     .vclock(clock_65mhz), .hcount(prev_hcount), .vcount(prev_vcount),
                     .p_obj1(obj1), .p_obj2(obj2), .p_obj3(obj3), .p_obj4(obj4), .p_obj5(obj5),
                     .hsync(prev_hsync), .vsync(prev_vsync), .blank(prev_blank), .p_rgb(p_rgb));
     
     
     assign AUD_SD = 1;
-    
+    wire [1:0] form;
+    assign form = SW[2:1];
+    wire music;
+    assign music = SW[3];
+    wire new_f_notes;
+    assign LED[2] = new_f_notes;
+    wire sil;
+    wire note;
+    assign LED[3] = sil;
+    assign LED[4] = note;
+    wire [19:0] note_counter;
+    wire [5:0] audio_counter;
     
     audio audio(.reset(reset), .clock(clock_65mhz), .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f(new_f), 
-                .pwm(AUD_PWM));
+                .form(form), .music(music), .pwm(AUD_PWM), .new_f_notes(new_f_notes), .sil(sil), .note(note), .note_counter(note_counter), .count(audio_counter));
     
     
     assign VGA_R = prev3_blank ? 0: p_rgb[11:8];
@@ -252,12 +263,12 @@ module nexys(
     
     //test outputs
     //assign data[11:0] = {1'b0, reset_count}; //last three digits disp_wave
-    assign data[28:16] = {offset_p0}; //first three digits wave_index
-    assign data[12:0] = {offset_p2};
-    assign LED[0] = 1;
+    assign data[31:12] = {note_counter}; //first three digits wave_index
+    assign data[5:0] = {audio_counter};
+    assign LED[0] = SW[2];
     assign LED[1] = curr_w0;//up;
-    assign LED[6:3] = wave_ready;
-    assign LED[2] = down;
+    //assign LED[6:3] = wave_ready;
+    //assign LED[2] = down;
     
 endmodule
 
