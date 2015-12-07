@@ -78,3 +78,92 @@ module debounce #(parameter DELAY=270000)   // .01 sec with a 27Mhz clock
        count <= count+1;
       
 endmodule
+
+module binary_to_bcd #(parameter LOG=3,
+                         WIDTH=8,
+                         WAIT=0,
+                         CALC=1,
+                         SHIFT=0,
+                         ADD=1)
+        (input [WIDTH-1:0] bin,
+         input clock,
+         output reg [4*LOG-1:0] out=0);
+    reg count = 0;
+    reg [WIDTH+4*LOG-1:0] calc = 0;
+    reg state = WAIT;
+    reg int_state = SHIFT;
+    integer i = 0;
+    wire new_num;
+    wire new_pulse;
+    reg [WIDTH-1:0] last_num = 0;
+    assign new_num = |(last_num ^ bin);
+    
+    pulse2 new_p (.clock(clock), .signal(new_num),.out(new_pulse));
+    always @ (posedge clock) begin
+        case(state)
+            WAIT: begin
+                count <= 0;
+                if (new_pulse) begin
+                    calc<=bin;
+                    state<= CALC;
+                    last_num<=bin;
+                end
+            end
+            CALC: begin
+                if (new_pulse) begin
+                    calc <= bin;
+                    last_num <= bin;
+                    count<=0;
+                end
+                else if (count < WIDTH) begin
+                    if(int_state==SHIFT) begin
+                        calc <= calc << 1;
+                        int_state<=ADD;
+                    end
+                    else if (int_state==ADD) begin
+                        for (i=0;i<LOG;i=i+1) begin
+                            if (calc[WIDTH+i*4 +: 4] > 4) begin
+                                calc[WIDTH+i*4 +: 4]<=calc[WIDTH+i*4 +: 4]+3;
+                            end
+                        end
+                        count <= count+1;
+                        int_state<=SHIFT;
+                    end
+                end
+                else begin
+                    out<=calc[WIDTH +: 4*LOG];
+                    state<=WAIT;
+                end
+            end
+        endcase
+    end
+endmodule
+        
+module pulse (input clock, signal,
+              output reg out);
+    reg state = 0;
+    
+    always @ (posedge clock) begin
+        state<=signal;
+        if(out) out <= 0;
+        else out <= signal & ~state;
+    end
+endmodule
+
+module pulse2 (input clock, signal,
+              output reg out);
+    reg state = 0;
+    reg count = 0;
+    
+    always @ (posedge clock) begin
+        state<=signal;
+        if(out) begin
+            if (count == 0) begin
+                count<= count +1;
+            end else begin
+                out <= 0;
+                count<=0;
+            end
+        end else out <= signal & ~state;
+    end
+endmodule

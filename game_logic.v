@@ -36,7 +36,7 @@ module game_logic
                 output reg [25:0] p_obj3=0, //if 26'b0, disregard and render nothing.
                 output reg [25:0] p_obj4=0, //thus a maximum of 5 objects may be on screen at one time.
                 output reg [25:0] p_obj5=0,
-                output reg [7:0] score = 0,
+                output reg [9:0] score = 0,
                 output reg [2:0] health = NUM_LIVES,
                 output [4:0] freq_id1,
                 output [4:0] freq_id2,
@@ -67,7 +67,6 @@ module game_logic
     always @ (posedge clock) begin
         
         //update player position
-        speed <= speed_j;
         case (state)
             START: begin
                 health<=NUM_LIVES;
@@ -77,13 +76,15 @@ module game_logic
                 p_obj3<=0;
                 p_obj4<=0;
                 p_obj5<=0;
-                //speed<=0;
+                speed<=0;
                 if (midi_ready) begin
                     state<=PLAY;
-                    speed<=1;
+                    speed<=speed_j;
+                    score<=20;
                 end
             end
             PLAY: begin
+                speed<=speed_j;
                 if(health == 0) begin
                     state<= START;
                 end
@@ -104,7 +105,7 @@ module game_logic
                         end
                         
                         if ((p_obj1[20:10] < CHAR_WIDTH) && (p_obj1[9:0] < p_vpos + CHAR_HEIGHT) && (p_obj1[9:0] > p_vpos - OBJ_HEIGHT)) begin
-                            case(p_obj2[22:21])
+                            case(p_obj2[21])
                                 0: begin
                                     score<=score+1;
                                 end
@@ -113,10 +114,10 @@ module game_logic
                                 end
                             endcase
                         end
-                    end else if ( obj_frame_counter == 1 && random[31:25] == 0 ) begin
+                    end else if ( obj_frame_counter == 1 && random[31:26] == 0 ) begin
                         p_obj1[21]=random[3];
                         p_obj1[20:10] <= SCREEN_WIDTH;
-                        p_obj1[9:0] <= 10'd220+random[7:0];
+                        p_obj1[9:0] <= 10'd230+random[7:0];
                     end
                     
                     if(obj2_on) begin
@@ -133,7 +134,7 @@ module game_logic
                         end
                         
                         if ((p_obj2[20:10] < CHAR_WIDTH) && (p_obj2[9:0] < p_vpos + CHAR_HEIGHT) && (p_obj2[9:0] > p_vpos - OBJ_HEIGHT)) begin
-                            case(p_obj2[22:21])
+                            case(p_obj2[21])
                                 0: begin
                                     score<=score+1;
                                 end
@@ -142,10 +143,10 @@ module game_logic
                                 end
                             endcase
                         end
-                    end else if ( obj_frame_counter == 2 && random[31:25] == 0 ) begin
+                    end else if ( obj_frame_counter == 2 && random[31:26] == 0 ) begin
                         p_obj2[21]=random[1];
                         p_obj2[20:10] <= SCREEN_WIDTH;
-                        p_obj2[9:0] <= 10'd220+random[8:1];
+                        p_obj2[9:0] <= 10'd230+random[8:1];
                     end
                                         
                     if(obj3_on) begin
@@ -162,7 +163,7 @@ module game_logic
                         end
                         
                         if ((p_obj3[20:10] < CHAR_WIDTH) && (p_obj3[9:0] < p_vpos + CHAR_HEIGHT) && (p_obj3[9:0] > p_vpos - OBJ_HEIGHT)) begin
-                            case(p_obj3[22:21])
+                            case(p_obj3[21])
                                 0: begin
                                     score<=score+1;
                                 end
@@ -172,10 +173,10 @@ module game_logic
                             endcase
                             p_obj3<=0;
                         end
-                    end else if (obj_frame_counter == 3 && random[31:25] == 0 ) begin
+                    end else if (obj_frame_counter == 3 && random[31:26] == 0 ) begin
                         p_obj3[21]=random[0];
                         p_obj3[20:10] <= SCREEN_WIDTH;
-                        p_obj3[9:0] <= 10'd220+random[9:2];
+                        p_obj3[9:0] <= 10'd230+random[9:2];
                     end
                                        
                     if(obj4_on) begin
@@ -220,34 +221,5 @@ module game_logic
 
         endcase
 
-    end
-endmodule
-
-module pulse (input clock, signal,
-              output reg out);
-    reg state = 0;
-    
-    always @ (posedge clock) begin
-        state<=signal;
-        if(out) out <= 0;
-        else out <= signal & ~state;
-    end
-endmodule
-
-module pulse2 (input clock, signal,
-              output reg out);
-    reg state = 0;
-    reg count = 0;
-    
-    always @ (posedge clock) begin
-        state<=signal;
-        if(out) begin
-            if (count == 0) begin
-                count<= count +1;
-            end else begin
-                out <= 0;
-                count<=0;
-            end
-        end else out <= signal & ~state;
     end
 endmodule

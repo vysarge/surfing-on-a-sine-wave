@@ -51,7 +51,7 @@ module display(input reset,
     wire [11:0] sky_rgb;
     
     wire [2:0] health_indicator;
-    assign health_indicator = {health>2'd2,health>2'd1,health>2'd0};
+    assign health_indicator = {health<1,health<2,health<3};
     //sprite declarations
     //character
     char_sprite #(.WIDTH(20), .HEIGHT(20), .LOG_FRAMES(3)) character 
@@ -119,11 +119,8 @@ module display(input reset,
                 .y(100), .curr_frame(d1), .p_rgb(number_rgb[2])
                 );
     //score
-    //wire[3:0] d100,d10,d1;
-    assign d100 = (score*10)>>10;
-    assign d10 = ((score-100*d100)*102)>>10;
-    assign d1 = score-100*d100-10*d10;
-    
+    binary_to_bcd #(.WIDTH(10),.LOG(3)) s (.bin(score),.clock(vclock),
+                    .out({d100,d10,d1}));
     
     
     //sky sprite
@@ -200,6 +197,15 @@ module display(input reset,
             end
             else if(heart_rgb[2]) begin //otherwise use collectable data
                 p_rgb <= heart_rgb[2];
+            end
+            else if(number_rgb[0]) begin //otherwise use collectable data
+                p_rgb <= number_rgb[0];
+            end
+            else if(number_rgb[1]) begin //otherwise use collectable data
+                p_rgb <= number_rgb[1];
+            end
+            else if(number_rgb[2]) begin //otherwise use collectable data
+                p_rgb <= number_rgb[2];
             end
             else if (u_bg_rgb) begin
                 p_rgb <= u_bg_rgb; //otherwise use upper background data
