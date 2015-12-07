@@ -77,7 +77,7 @@ module audio_rom #(parameter BITS = 6)
         endcase
         
         
-        level <= (value >> 10 - BITS);
+        level <= (value >> (10 - BITS));
         
         //sine values
         case(c_index)
