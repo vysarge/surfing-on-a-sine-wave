@@ -195,10 +195,21 @@ module nexys(
             p_vpos <= p_height; 
         end
         
-        
+        /*if (up && !prev_up) begin
+            state <= state + 1;
+        end
+        else if (down && !prev_down) begin
+            state <= state - 1;
+        end*/
         
     end
     
+    wire sw1, sw2, sw3, sw4, sw5;
+    debounce s1(.reset(reset),.clock(clock_65mhz),.noisy(SW[1]),.clean(sw1));
+    debounce s2(.reset(reset),.clock(clock_65mhz),.noisy(SW[2]),.clean(sw2));
+    debounce s3(.reset(reset),.clock(clock_65mhz),.noisy(SW[3]),.clean(sw3));
+    debounce s4(.reset(reset),.clock(clock_65mhz),.noisy(SW[4]),.clean(sw4));
+    debounce s5(.reset(reset),.clock(clock_65mhz),.noisy(SW[5]),.clean(sw5));
     
     
     xvga vga1(.vclock(clock_65mhz),.hcount(hcount),.vcount(vcount),
@@ -222,7 +233,7 @@ module nexys(
     
     wire [12:0] offset_p0, offset_p2;
     
-    physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .d_offset(d_offset), .r_offset(up), .hcount(hcount),
+    physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .d_offset(d_offset), .r_offset(reset), .hcount(hcount),
                     .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f_in(new_f),
                     .player_profile(p_height), .wave_profile(disp_wave)
                     );
@@ -239,9 +250,10 @@ module nexys(
     
     assign AUD_SD = 1;
     wire [1:0] form;
-    assign form = SW[2:1];
+    //assign form = SW[2:1];
     wire music;
-    assign music = SW[3];
+    assign music = sw3;
+    assign form = 0;//{~sw3,0};
     wire new_f_notes;
     assign LED[2] = new_f_notes;
     wire sil;
@@ -251,8 +263,11 @@ module nexys(
     wire [19:0] note_counter;
     wire [5:0] audio_counter;
     
-    audio audio(.reset(reset), .clock(clock_65mhz), .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f(new_f), 
-                .form(form), .music(music), .pwm(AUD_PWM), .new_f_notes(new_f_notes), .sil(sil), .note(note), .note_counter(note_counter), .count(audio_counter));
+    wire [4:0]freq0;
+    wire [5:0] state;
+    
+    audio audio(.reset(reset), .clock(clock_65mhz), .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f(new_f), .state(state),
+                .form(form), .music(music), .pwm(AUD_PWM), .new_f_notes(new_f_notes), .sil(sil), .note(note), .note_counter(note_counter), .count(audio_counter), .freq0(freq0));
     
     
     assign VGA_R = prev3_blank ? 0: p_rgb[11:8];
@@ -263,8 +278,8 @@ module nexys(
     
     //test outputs
     //assign data[11:0] = {1'b0, reset_count}; //last three digits disp_wave
-    assign data[31:12] = {note_counter}; //first three digits wave_index
-    assign data[5:0] = {audio_counter};
+    assign data[20:16] = {freq0}; //first three digits wave_index
+    assign data[5:0] = {state};
     assign LED[0] = SW[2];
     assign LED[1] = curr_w0;//up;
     //assign LED[6:3] = wave_ready;

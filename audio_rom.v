@@ -65,6 +65,12 @@ module audio_rom #(parameter BITS = 6)
             5'd22: begin freq = 16'd6475; period = 16'd2591; end
             5'd23: begin freq = 16'd6860; period = 16'd2445; end
             5'd24: begin freq = 16'd7268; period = 16'd2308; end //A4
+            5'd25: begin freq = 16'd7700; period = 16'd2178; end
+            5'd26: begin freq = 16'd8158; period = 16'd2056; end
+            5'd27: begin freq = 16'd8643; period = 16'd1941; end
+            5'd28: begin freq = 16'd9157; period = 16'd1832; end
+            5'd29: begin freq = 16'd9702; period = 16'd1729; end
+            5'd30: begin freq = 16'd10279; period = 16'd1632; end
             5'd31: begin freq = 16'd0; period = 16'd1; end
             
             default: begin freq = 11'd256; period = 11'd243; end
