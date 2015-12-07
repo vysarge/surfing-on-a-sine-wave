@@ -187,7 +187,8 @@ module nexys(
     wire curr_w0;
     wire [3:0] wave_ready;
     wire [10:0] d_offset;
-    wire [7:0] score;
+    wire [9:0] score;
+    wire [1:0] health;
     
     wire [10:0] paroffset;
     physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .d_offset(d_offset), .r_offset(up), .hcount(hcount),
@@ -197,12 +198,12 @@ module nexys(
     
     display display(.reset(reset), .p_vpos(p_vpos), .char_frame(SW[2:1]), .wave_prof(disp_wave), 
                     .vclock(clock_65mhz), .hcount(prev_hcount), .vcount(prev_vcount),
+                    .score(score),.health(health),.d100(d100),.d10(d10),.d1(d1),
                     .p_obj1(obj1), .p_obj2(obj2), .p_obj3(obj3), .p_obj4(obj4), .p_obj5(obj5),
-                    .hsync(prev_hsync), .vsync(prev_vsync), .blank(prev_blank), .p_rgb(p_rgb),
-                    .parallax_offset(paroffset));
+                    .hsync(prev_hsync), .vsync(prev_vsync), .blank(prev_blank), .p_rgb(p_rgb));
                     
     game_logic gfsm (.clock(clock_65mhz),.speed_j(SW[15:12]),.key1_index(key1_index),.key2_index(key2_index),.midi_ready(midi_ready),.p_vpos(p_height),
-                		.wave_height(disp_wave),.wave_ready(wave_ready),.hcount(hcount),   
+                		.wave_height(disp_wave),.wave_ready(wave_ready),.hcount(hcount),.health(health),
                 		.vcount(vcount),.vsync(vsync),.hsync(hsync),.blank(blank), .score(score),
                 		.speed(d_offset), .char_frame(char_frame), .p_obj1(obj1),.p_obj2(obj2),
                 		.seed({2{SW[15:0]}}),.p_obj3(obj3), .p_obj4(obj4),.p_obj5(obj5),
@@ -219,11 +220,21 @@ module nexys(
     //test outputs
     //assign data[11:0] = {1'b0, reset_count}; //last three digits disp_wave
     //assign data[31:20] = {period0}; //first three digits wave_index
-    assign data[31:0]={key1_index,key2_index,paroffset[7:0],score};
+    wire [3:0] d100,d10,d1;
+    assign data[31:0]={4'b0,d100,d10,d1,2'b0,health,2'b0,score};
     assign LED[0] = 1;
     assign LED[1] = curr_w0;//up;
     assign LED[6:3] = wave_ready;
     assign LED[2] = down;
+    wire [7:0] bcd1;
+    wire [11:0] bcd2;
+    
+    binary_to_bcd #(.LOG(2),.WIDTH(8)) b1
+            (.bin(8'd95),.clock(clock_65mhz),
+             .out(bcd1));
+    binary_to_bcd #(.LOG(3),.WIDTH(10)) b2
+             (.bin(10'd229),.clock(clock_65mhz),
+              .out(bcd2));
     
     wire [31:0] random;
     wire new_pulse;

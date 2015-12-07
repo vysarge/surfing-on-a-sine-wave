@@ -1,21 +1,21 @@
 module background_rom #(parameter WIDTH = 1024,
-                    parameter HEIGHT = 512)
+                    parameter HEIGHT = 256)
                    (input [10:0] x,
                    input [9:0] y,
                    output reg [11:0]  pixel);
     
-    reg[(WIDTH>>4)*12-1:0] horiz; //a horizontal strip of pixels
+    reg[(WIDTH>>3)*12-1:0] horiz; //a horizontal strip of pixels
     //selects the correct pixel from the horizontal strip
     
     always @(x, horiz) begin
-        pixel = horiz >> (12*((WIDTH - x)>>4)-2);
+        pixel = horiz >> (12*((WIDTH - x)>>3));
         //[WIDTH*12-1-x*12:WIDTH*12-13-x*12];
     end
     
     
     //for current y, return the corresponding pixel strip
     always @(y) begin
-        case(y[8:4]) 
+        case(y[7:3]) 
             8'b00000: horiz=1536'h_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf;
 			8'b00001: horiz=1536'h_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf;
 			8'b00010: horiz=1536'h_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_8cf_7cf_8cf_8cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_8cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf_7cf;
@@ -50,7 +50,7 @@ module background_rom #(parameter WIDTH = 1024,
 			8'b11111: horiz=1536'h_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade;
 
             
-            default: horiz = 768'h_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00;
+            default: horiz = 1536'h_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade_adf_adf_ade_ade;
         endcase
 
     end
