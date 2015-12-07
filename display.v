@@ -49,14 +49,20 @@ module display(input reset,
     wire [11:0] l_bg_rgb;
     wire [11:0] u_bg_rgb;
     wire [11:0] sky_rgb;
+    reg [31:0] d100,d10,d1;
+    
+    
+    
+    //counter for animation
+    reg [4:0] char_sprite_count; 
     
     wire [2:0] health_indicator;
     assign health_indicator = {health<1,health<2,health<3};
     //sprite declarations
     //character
-    char_sprite #(.WIDTH(27), .HEIGHT(30), .LOG_FRAMES(3)) character 
+    char_sprite #(.WIDTH(45), .HEIGHT(40), .LOG_FRAMES(2)) character 
                        (.vclock(vclock), .hcount(hcount), .x(10), .vcount(vcount),
-                       .y(vpos), .curr_frame(char_frame), .p_rgb(character_rgb)
+                       .y(vpos), .curr_frame(char_sprite_count[4:3]), .p_rgb(character_rgb)
                        );
     
     //collectables
@@ -74,6 +80,16 @@ module display(input reset,
                          (.vclock(vclock), .hcount(hcount), .x(obj[2][20:10]), .vcount(vcount),
                          .y(obj[2][9:0]), .s_type(obj[2][22:21]), .curr_frame(obj[02][25:23]), .p_rgb(obj_rgb[2])
                          );
+                         
+    coll_sprite #(.WIDTH(15), .HEIGHT(16), .LOG_FRAMES(3)) object4
+                           (.vclock(vclock), .hcount(hcount), .x(obj[3][20:10]), .vcount(vcount),
+                           .y(obj[3][9:0]), .s_type(obj[3][22:21]), .curr_frame(obj[3][25:23]), .p_rgb(obj_rgb[3])
+                           );
+ 
+     coll_sprite #(.WIDTH(15), .HEIGHT(16), .LOG_FRAMES(3)) object5
+                          (.vclock(vclock), .hcount(hcount), .x(obj[4][20:10]), .vcount(vcount),
+                          .y(obj[4][9:0]), .s_type(obj[4][22:21]), .curr_frame(obj[4][25:23]), .p_rgb(obj_rgb[4])
+                          );
     // shark sprites
     shark_sprite #(.WIDTH(40), .HEIGHT(20), .LOG_FRAMES(3)) shark1
                           (.vclock(vclock), .hcount(hcount), .x(obj[0][20:10]), .vcount(vcount),
@@ -88,6 +104,19 @@ module display(input reset,
                           (.vclock(vclock), .hcount(hcount), .x(obj[2][20:10]), .vcount(vcount),
                           .y(obj[2][9:0]), .s_type(obj[2][22:21]), .curr_frame(obj[2][25:23]), .p_rgb(shark_rgb[2])
                           );
+                          
+    shark_sprite #(.WIDTH(40), .HEIGHT(20), .LOG_FRAMES(3)) shark4
+                          (.vclock(vclock), .hcount(hcount), .x(obj[3][20:10]), .vcount(vcount),
+                          .y(obj[3][9:0]), .s_type(obj[3][22:21]), .curr_frame(obj[3][25:23]), .p_rgb(shark_rgb[3])
+                          );
+                                                      
+      shark_sprite #(.WIDTH(40), .HEIGHT(20), .LOG_FRAMES(3)) shark5
+                            (.vclock(vclock), .hcount(hcount), .x(obj[4][20:10]), .vcount(vcount),
+                            .y(obj[4][9:0]), .s_type(obj[4][22:21]), .curr_frame(obj[4][25:23]), .p_rgb(shark_rgb[4])
+                            );
+
+
+
                           
     heart_sprite #(.WIDTH(40), .HEIGHT(40), .LOG_FRAMES(1)) heart1
                (.vclock(vclock), .hcount(hcount), .x(20), .vcount(vcount),
@@ -106,7 +135,8 @@ module display(input reset,
     
     number_sprite #(.WIDTH(20), .HEIGHT(25), .LOG_FRAMES(4)) number100
                (.vclock(vclock), .hcount(hcount), .x(20), .vcount(vcount),
-               .y(100), .curr_frame(d100), .p_rgb(number_rgb[0])
+               .y(100), .curr_frame(d100
+               ), .p_rgb(number_rgb[0])
                );
     
     number_sprite #(.WIDTH(20), .HEIGHT(25), .LOG_FRAMES(4)) number10
@@ -118,9 +148,7 @@ module display(input reset,
                 (.vclock(vclock), .hcount(hcount), .x(100), .vcount(vcount),
                 .y(100), .curr_frame(d1), .p_rgb(number_rgb[2])
                 );
-    //score
-    binary_to_bcd #(.WIDTH(10),.LOG(3)) s (.bin(score),.clock(vclock),
-                    .out({d100,d10,d1}));
+
     
     
     //sky sprite
@@ -155,9 +183,14 @@ module display(input reset,
         obj[3] <= p_obj4;
         obj[4] <= p_obj5;
         
+        d100<=({10'b0,score}*10)>>10;
+        d10<=((score-100*d100)*102)>>10;
+        d1<=score-d100*100-d10*10;
+        
         parallax_count<=parallax_count+1;
         if (parallax_count  == 0) parallax_offset<= parallax_offset+1;
         
+        char_sprite_count <= char_sprite_count + 1;
     end
     
     //at each pixel
@@ -180,6 +213,16 @@ module display(input reset,
             else if(obj[2] && obj_rgb[2]) begin //otherwise use collectable data
                 p_rgb <= obj_rgb[2];
             end
+            
+
+            else if(obj[3] && obj_rgb[3]) begin //otherwise use collectable data
+                p_rgb <= obj_rgb[3];
+            end
+            else if(obj[4] && obj_rgb[4]) begin //otherwise use collectable data
+                p_rgb <= obj_rgb[4];
+            end
+
+
             else if(obj[0] && shark_rgb[0]) begin //otherwise use collectable data
                 p_rgb <= shark_rgb[0];
             end
@@ -189,6 +232,16 @@ module display(input reset,
             else if(obj[2] && shark_rgb[2]) begin //otherwise use collectable data
                 p_rgb <= shark_rgb[2];
             end
+
+            else if(obj[3] && shark_rgb[3]) begin //otherwise use collectable data
+                p_rgb <= shark_rgb[3];
+            end
+
+            else if(obj[4] && shark_rgb[4]) begin //otherwise use collectable data
+                p_rgb <= shark_rgb[4];
+            end
+
+
             else if(heart_rgb[0]) begin //otherwise use collectable data
                 p_rgb <= heart_rgb[0];
             end
@@ -275,7 +328,7 @@ module shark_sprite #(parameter WIDTH=40,
                (input vclock,
                 input [10:0] hcount, x,
                 input [9:0] vcount, y,
-                input [2:0] s_type, //type of sprite: 1 is shark sprite
+                input [1:0] s_type, //type of sprite: 1 is shark sprite
                 input [LOG_FRAMES-1:0] curr_frame,
                 output reg [11:0] p_rgb
                 );
@@ -378,9 +431,9 @@ endmodule
 //    Produces the pixel as affected by a character sprite
 //    
 //////////////////////////////////////////////////////////
-module char_sprite #(parameter WIDTH=20,
-                parameter HEIGHT=20,
-                parameter LOG_FRAMES=3)
+module char_sprite #(parameter WIDTH=45,
+                parameter HEIGHT=42,
+                parameter LOG_FRAMES=2)
                (input vclock,
                 input [10:0] hcount, x,
                 input [9:0] vcount, y,

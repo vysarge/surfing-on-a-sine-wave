@@ -12,10 +12,11 @@
 module game_logic 
                 #(parameter START=0, PLAY=1,
                 SCREEN_WIDTH=1024,
-                CHAR_WIDTH=20,
-                CHAR_HEIGHT=20,
+                CHAR_WIDTH=60,
+                CHAR_HEIGHT=60,
                 OBJ_HEIGHT=20,
-                NUM_LIVES=3)
+                NUM_LIVES=3,
+                BOOSTER = 20)
                 ( input [3:0] speed_j,
                 input clock,
                 input [31:0] seed,
@@ -81,7 +82,7 @@ module game_logic
                 if (midi_ready) begin
                     state<=PLAY;
                     speed<=speed_j;
-                    score<=20;
+                    score<=0;
                 end
             end
             PLAY: begin
@@ -105,8 +106,8 @@ module game_logic
                             p_obj1[25:23] <= p_obj1[25:23] + 1;
                         end
                         
-                        if ((p_obj1[20:10] < CHAR_WIDTH) && (p_obj1[9:0] < p_vpos + CHAR_HEIGHT) && (p_obj1[9:0] > p_vpos - OBJ_HEIGHT)) begin
-                            case(p_obj2[21])
+                        if ((p_obj1[20:10] < CHAR_WIDTH) && (p_obj1[9:0] < p_vpos + CHAR_HEIGHT + (~p_obj1[21])*BOOSTER) && (p_obj1[9:0] > p_vpos - OBJ_HEIGHT)) begin
+                            case(p_obj1[21])
                                 0: begin
                                     score<=score+1;
                                 end
@@ -114,6 +115,7 @@ module game_logic
                                     health<=health-1;
                                 end
                             endcase
+                            p_obj1 <= 0;
                         end
                     end else if ( obj_frame_counter == 1 && random[31:26] == 0 ) begin
                         p_obj1[21]=random[3];
@@ -134,7 +136,7 @@ module game_logic
                             p_obj2[25:23] <= p_obj2[25:23] + 1;
                         end
                         
-                        if ((p_obj2[20:10] < CHAR_WIDTH) && (p_obj2[9:0] < p_vpos + CHAR_HEIGHT) && (p_obj2[9:0] > p_vpos - OBJ_HEIGHT)) begin
+                        if ((p_obj2[20:10] < CHAR_WIDTH) && (p_obj2[9:0] < p_vpos + CHAR_HEIGHT + (~p_obj2[21])*BOOSTER) && (p_obj2[9:0] > p_vpos - OBJ_HEIGHT)) begin
                             indic <= 1;
                             case(p_obj2[21])
                                 0: begin
@@ -144,6 +146,8 @@ module game_logic
                                     health<=health-1;
                                 end
                             endcase
+                            
+                            p_obj2 <= 0;
                         end
                         else indic <= 0;
                     end else if ( obj_frame_counter == 2 && random[31:26] == 0 ) begin
@@ -165,7 +169,7 @@ module game_logic
                             p_obj3[25:23] <= p_obj3[25:23] + 1;
                         end
                         
-                        if ((p_obj3[20:10] < CHAR_WIDTH) && (p_obj3[9:0] < p_vpos + CHAR_HEIGHT) && (p_obj3[9:0] > p_vpos - OBJ_HEIGHT)) begin
+                        if ((p_obj3[20:10] < CHAR_WIDTH) && (p_obj3[9:0] < p_vpos + CHAR_HEIGHT + (~p_obj3[21])*BOOSTER) && (p_obj3[9:0] > p_vpos - OBJ_HEIGHT)) begin
                             case(p_obj3[21])
                                 0: begin
                                     score<=score+1;
@@ -182,43 +186,67 @@ module game_logic
                         p_obj3[9:0] <= 10'd230+random[9:2];
                     end
                                        
+
                     if(obj4_on) begin
                         if (p_obj4[20:10] > 0) begin
                             p_obj4[20:10] <= p_obj4[20:10] - speed;
                         end
-                        else begin
+                        else
                             p_obj4<=0;
-                        end
+
                         //increment frame counter so that obj appears to rotate roughly once a second
                          //3 bits; changes frame once every 8 vga frames
                         if (obj_frame_counter == 0) begin
                             p_obj4[25:23] <= p_obj4[25:23] + 1;
                         end
                         
-                        if ((p_obj4[20:10] < CHAR_WIDTH) && (p_obj4[9:0] < p_vpos + CHAR_HEIGHT) && (p_obj4[9:0] > p_vpos - OBJ_HEIGHT)) begin
-                            score<=score+1;
+                        if ((p_obj4[20:10] < CHAR_WIDTH) && (p_obj4[9:0] < p_vpos + CHAR_HEIGHT + (~p_obj4[21])*BOOSTER) && (p_obj4[9:0] > p_vpos - OBJ_HEIGHT)) begin
+                            case(p_obj4[21])
+                                0: begin
+                                    score<=score+1;
+                                end
+                                1: begin
+                                    health<=health-1;
+                                end
+                            endcase
                             p_obj4<=0;
                         end
+                    end else if (obj_frame_counter == 4 && random[31:26] == 0 ) begin
+                        p_obj4[21]=random[0];
+                        p_obj4[20:10] <= SCREEN_WIDTH;
+                        p_obj4[9:0] <= 10'd230+random[9:2];
                     end
-                    
+
                     if(obj5_on) begin
                         if (p_obj5[20:10] > 0) begin
                             p_obj5[20:10] <= p_obj5[20:10] - speed;
                         end
-                        else begin
+                        else
                             p_obj5<=0;
-                        end
+
                         //increment frame counter so that obj appears to rotate roughly once a second
                          //3 bits; changes frame once every 8 vga frames
                         if (obj_frame_counter == 0) begin
                             p_obj5[25:23] <= p_obj5[25:23] + 1;
                         end
                         
-                        if ((p_obj5[20:10] < CHAR_WIDTH) && (p_obj5[9:0] < p_vpos + CHAR_HEIGHT) && (p_obj5[9:0] > p_vpos - OBJ_HEIGHT)) begin
-                            score<=score+1;
+                        if ((p_obj5[20:10] < CHAR_WIDTH) && (p_obj5[9:0] < p_vpos + CHAR_HEIGHT + (~p_obj5[21])*BOOSTER) && (p_obj5[9:0] > p_vpos - OBJ_HEIGHT)) begin
+                            case(p_obj5[21])
+                                0: begin
+                                    score<=score+1;
+                                end
+                                1: begin
+                                    health<=health-1;
+                                end
+                            endcase
                             p_obj5<=0;
                         end
-                    end                                        
+                    end else if (obj_frame_counter == 5 && random[31:26] == 0 ) begin
+                        p_obj5[21]=random[0];
+                        p_obj5[20:10] <= SCREEN_WIDTH;
+                        p_obj5[9:0] <= 10'd230+random[9:2];
+                    end
+                                                         
                 end
             end
 

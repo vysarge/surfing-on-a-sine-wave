@@ -11,7 +11,8 @@ module shark_rom #(parameter WIDTH = 40,
     //selects the correct pixel from the horizontal strip
     
     always @(x, horiz) begin
-        pixel = (horiz >> (WIDTH * 12 - x*12 - 12));
+        pixel = (horiz >> (x*12));
+        //pixel = (horiz >> (WIDTH * 12 - x*12 - 12));
         //[WIDTH*12-1-x*12:WIDTH*12-13-x*12];
     end
     
@@ -87,7 +88,7 @@ module shark_rom #(parameter WIDTH = 40,
 				8'b1xx_10011: horiz=480'h_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000_000;
 
                 
-                default: horiz = 480'h_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00;
+                default: horiz = 0;//480'h_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00_F00;
             endcase
         end
         else begin

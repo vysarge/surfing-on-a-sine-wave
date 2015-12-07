@@ -166,7 +166,7 @@ module nexys(
         prev_right <= right;
 
         if(prev3_hcount==0) begin 
-            p_vpos<= p_height;              //sample player height to prevent glitching
+            p_vpos<= p_height - 25;              //sample player height to prevent glitching
         end 
     end
     

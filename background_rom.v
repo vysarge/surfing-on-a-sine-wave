@@ -8,7 +8,7 @@ module background_rom #(parameter WIDTH = 1024,
     //selects the correct pixel from the horizontal strip
     
     always @(x, horiz) begin
-        pixel = horiz >> (12*((WIDTH - x)>>3));
+        pixel = horiz >> (12*((WIDTH - x - 1)>>3));
         //[WIDTH*12-1-x*12:WIDTH*12-13-x*12];
     end
     
