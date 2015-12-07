@@ -253,7 +253,7 @@ module nexys(
     //assign form = SW[2:1];
     wire music;
     assign music = sw3;
-    assign form = 0;//{~sw3,0};
+    assign form = {~sw3,sw2};
     wire new_f_notes;
     assign LED[2] = new_f_notes;
     wire sil;
@@ -265,8 +265,9 @@ module nexys(
     
     wire [4:0]freq0;
     wire [5:0] state;
+    wire [5:0] state_out;
     
-    audio audio(.reset(reset), .clock(clock_65mhz), .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f(new_f), .state(state),
+    audio audio(.reset(reset), .clock(clock_65mhz), .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f(new_f), .state(state), .prev_state(state_out),
                 .form(form), .music(music), .pwm(AUD_PWM), .new_f_notes(new_f_notes), .sil(sil), .note(note), .note_counter(note_counter), .count(audio_counter), .freq0(freq0));
     
     
@@ -279,7 +280,7 @@ module nexys(
     //test outputs
     //assign data[11:0] = {1'b0, reset_count}; //last three digits disp_wave
     assign data[20:16] = {freq0}; //first three digits wave_index
-    assign data[5:0] = {state};
+    assign data[5:0] = {state_out};
     assign LED[0] = SW[2];
     assign LED[1] = curr_w0;//up;
     //assign LED[6:3] = wave_ready;

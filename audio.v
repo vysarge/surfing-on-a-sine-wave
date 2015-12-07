@@ -23,7 +23,8 @@ module audio #(parameter BITS = 6, //bit resolution of audio output
              output reg note,
              output reg [NOTE_LENGTH-1:0] note_counter,
              output reg [BITS-1:0] count,
-             output [4:0]freq0
+             output [4:0]freq0,
+             output reg [5:0] prev_state
     );
     assign freq0 = freq[0];
     //parameters for types of waves
@@ -72,13 +73,14 @@ module audio #(parameter BITS = 6, //bit resolution of audio output
     //information about notes
     reg [4:0] freq_diff; //positive difference between notes
     reg [4:0] lower_freq; //lower frequency
-    reg [4:0] higher_freq; //higher frequency; empty if only one frequency
+    reg [4:0] upper_freq; //higher frequency; empty if only one frequency
     reg two_freq; //1 if two frequencies; 0 if only one
     //wire new_f_notes; //new_f for note audio_wave instances
     reg [4:0] base_freq; //frequency to be used as the 'base' (i/I chord) of the audio output
     reg [4:0] freq[3:0]; //frequencies to be played by the corresponding audio_wave instances
     //reg [5:0] state; //chord state
     reg [4:0] fade_coeff; //fade out.
+    reg [4:0] raw_base_freq;
     
     wire new_f_delay;
     pipeliner #(.CYCLES(1), .LOG(2), .WIDTH(1)) a0 (.reset(reset), .clock(clock), .in(new_f), .out(new_f_delay));
@@ -117,31 +119,100 @@ module audio #(parameter BITS = 6, //bit resolution of audio output
          if (new_f) begin //when new_f goes high
              //freq_diff is the positive difference between notes.
              freq_diff <= (freq_id1 > freq_id2) ? (freq_id1 - freq_id2) : (freq_id2 - freq_id1);
-             {lower_freq, higher_freq} <= (freq_id1 > freq_id2) ? {freq_id2, freq_id1} : {freq_id1, freq_id2};
+             {lower_freq, upper_freq} <= (freq_id1 > freq_id2) ? {freq_id2, freq_id1} : {freq_id1, freq_id2};
              two_freq <= (freq_id2 != 5'b11111);
          end 
+         
          if (new_f_delay) begin //one cycle later
-             if (lower_freq < 4) begin //adjust frequency to compensate for limited output range
-                 base_freq <= lower_freq + 12;
-             end
-             else if (lower_freq < 13) begin
-                 base_freq <= lower_freq;
-             end
-             else begin
-                 base_freq <= lower_freq - 12;
-             end
-         end
-         if (new_f_delay2) begin //one cycle later
              casez ({two_freq, freq_diff})
                  6'b0zzzzz: begin //only one frequency
                                 state <= I;
+                                raw_base_freq <= lower_freq;
                             end
+
+                 6'b100000, 6'b101100, 6'b111000: begin //unison
+                                state <= I;
+                                raw_base_freq <= lower_freq;
+                            end
+
+                 6'b100001, 6'b101101: begin //m2
+                                state <= IV7;
+                                
+                                if (lower_freq < 4) raw_base_freq <= lower_freq + 8;
+                                else raw_base_freq <= lower_freq - 4;
+                            end
+
+                 6'b100010, 6'b101110: begin //M2
+                                state <= V7;
+                                if (lower_freq < 5) raw_base_freq <= lower_freq + 7;
+                                else raw_base_freq <= lower_freq - 5;
+                            end
+
+                 6'b100011, 6'b101111: begin //m3
+                                state <= i;
+                                raw_base_freq <= lower_freq;
+                            end
+
+                 6'b100100, 6'b110000: begin //M3
+                                state <= I;
+                                raw_base_freq <= lower_freq;
+                            end
+
+                 6'b100101, 6'b110001: begin //P4
+                                state <= I6;
+                                raw_base_freq <= upper_freq;
+                            end
+
+                 6'b100110, 6'b110010: begin //+4 / -5
+                                state <= A4;
+                                raw_base_freq <= lower_freq + 1; //-5 will resolve inwards to base_freq and base_freq + 4
+                            end
+
+                 6'b100111, 6'b110011: begin //P5
+                                state <= I;
+                                raw_base_freq <= lower_freq;
+                            end
+
+                 6'b101000, 6'b110100: begin //m6
+                                state <= I6;
+                                raw_base_freq <= upper_freq;
+                            end
+
+                 6'b101001, 6'b110101: begin //M6
+                                state <= i;
+                                raw_base_freq <= upper_freq;
+                            end
+
+                 6'b101010, 6'b110110: begin //m7
+                                state <= V7;
+                                raw_base_freq <= lower_freq + 5;
+                            end
+
+                 6'b101011, 6'b110111: begin //M7
+                                state <= IV7;
+                                raw_base_freq <= upper_freq - 4;
+                            end
+
+
                  default: state <= I;
              endcase
              
-             note_counter <= 0;
+             
              //sil_counter <= 1;
              //fade_coeff <= 5'b11111;
+         end
+         if (new_f_delay2) begin //one cycle later
+             if (raw_base_freq < 4) begin //adjust frequency to compensate for limited output range
+                 base_freq <= raw_base_freq + 12;
+             end
+             else if (raw_base_freq < 13) begin
+                 base_freq <= raw_base_freq;
+             end
+             else if (raw_base_freq < 25) begin 
+                 base_freq <= raw_base_freq - 12;
+             end
+             else base_freq <= raw_base_freq - 24;
+             note_counter <= 0;
          end
          
          curr_level <= (music) ? curr_level_music : (({2'b0,level[4]}+level[5])>>2);
@@ -170,7 +241,7 @@ module audio #(parameter BITS = 6, //bit resolution of audio output
                  
                  if (note_counter == 0) begin
                      new_f_notes <= 1;
-                     
+                     prev_state <= state;
                      //calculate new notes
                      case(state)
                          I:       begin //I chord
@@ -287,12 +358,12 @@ module audio #(parameter BITS = 6, //bit resolution of audio output
                                       freq[2] <= base_freq + 3; //3rd
                                       freq[3] <= base_freq + 7; //5th
                                       
-                                      if (random[0] && random[1]) state <= VI;
+                                      if (random[0] && random[1]) state <= VMINOR;
                                       else if (random[2] && random[3]) state <= VII6;
-                                      else if (random[4]) state <= VMINOR;
+                                      else if (random[4]) state <= VI;
                                       else if (random[5]) state <= III;
-                                      else if (random[6]) state <= iid;
-                                      else if (random[7]) state <= iv;
+                                      else if (random[6]) state <= iv;
+                                      else if (random[7]) state <= iid;
                                       else state <= viid6MINOR;
                                   end
 
@@ -370,7 +441,7 @@ module audio #(parameter BITS = 6, //bit resolution of audio output
                          VMINOR:       begin //...
                                       freq[0] <= base_freq + 7; //root
                                       freq[1] <= base_freq + 11; //3rd
-                                      freq[2] <= base_freq + 14; //5th
+                                      freq[2] <= base_freq + 7; //5th
                                       freq[3] <= base_freq + 7; //root
                                       
                                       if (random[0]) state <= VI;

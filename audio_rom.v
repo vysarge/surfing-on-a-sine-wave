@@ -73,7 +73,7 @@ module audio_rom #(parameter BITS = 6)
             5'd30: begin freq = 16'd10279; period = 16'd1632; end
             5'd31: begin freq = 16'd0; period = 16'd1; end
             
-            default: begin freq = 11'd256; period = 11'd243; end
+            default: begin freq = 16'd1817; period = 16'd9233; end
         endcase
         
         
