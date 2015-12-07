@@ -6,7 +6,7 @@
 
 
 module audio #(parameter BITS = 6, //bit resolution of audio output
-               parameter NOTE_LENGTH = 19 //2^NOTE_LENGTH cycles of count until the note changes
+               parameter NOTE_LENGTH = 18 //2^NOTE_LENGTH cycles of count until the note changes
                )
             (input reset,
              input clock,
@@ -54,8 +54,8 @@ module audio #(parameter BITS = 6, //bit resolution of audio output
     reg [BITS-1:0] curr_level; //net current wave level
     reg [BITS-1:0] curr_level_music;
     
-    //count is twice as large to halve the volume.
-    reg [BITS:0] count; //current count; resets when it's time for a new pwm period
+    //count is larger to decrease volume
+    reg [BITS+1:0] count; //current count; resets when it's time for a new pwm period
     reg [BITS-1:0] curr_level_notes;
     
     wire [BITS-1:0] level[5:0];
