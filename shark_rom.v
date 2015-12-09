@@ -108,7 +108,7 @@ module heart_rom #(parameter WIDTH = 40,
                    input [LOG_FRAMES-1:0] frame,
                    output reg [11:0]  pixel);
     
-    reg[(WIDTH>>LG_SCALE)*12-1:0] horiz; //a horizontal strip of pixels
+    reg[(WIDTH>>LG_SCALE)*12-1:0] horiz; //a horizontal strip of pixels with scaling
     //selects the correct pixel from the horizontal strip
     
     always @(x, horiz) begin
@@ -153,10 +153,10 @@ module number_rom #(parameter WIDTH = 20,
                     parameter LOG_FRAMES = 4)
                    (input [10:0] x,
                    input [9:0] y,
-                   input [LOG_FRAMES-1:0] frame,
+                   input [LOG_FRAMES-1:0] frame, 		//frame corresponds to digit
                    output reg [11:0]  pixel);
     
-    reg[(WIDTH>>LG_SCALE)*12-1:0] horiz; //a horizontal strip of pixels
+    reg[(WIDTH>>LG_SCALE)*12-1:0] horiz; //a horizontal strip of pixels with scaling
     //selects the correct pixel from the horizontal strip
     
     always @(x, horiz) begin

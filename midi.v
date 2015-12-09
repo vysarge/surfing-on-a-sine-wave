@@ -36,11 +36,11 @@ module midi
                 serial_sample<=0;
                 error<=0;
                 set_index<=1;
-                if (serial == 0) state<=START;
+                if (serial == 0) state<=START;              // begin deserializing when the signal goes low
             end
             
             START: begin 
-                time_counter<=time_counter+1;
+                time_counter<=time_counter+1;               // wait through start bit
                 if(time_counter == COUNT) begin
                     time_counter<=0;
                     state<=NOTE;
@@ -48,22 +48,22 @@ module midi
             end
             
             NOTE: begin
-                serial_sample <= serial_sample + serial;
+                serial_sample <= serial_sample + serial;    // sample the signal every clock cycle
                 time_counter <= time_counter+1;
                 
-                if(time_counter == COUNT)  begin
+                if(time_counter == COUNT)  begin            // beginning of new bit
                     time_counter<=0;
                     serial_sample<=0;
-                    if (serial_sample > COUNT-TIME_THRESHOLD) begin
+                    if (serial_sample > COUNT-TIME_THRESHOLD) begin     //record high or low for bit just ended
                         temp_index[bit_counter]<=1;
                     end
-                    else if (serial_sample < TIME_THRESHOLD) begin
-                        temp_index[bit_counter]<=0;
+                    else if (serial_sample < TIME_THRESHOLD) begin      // use bit_counter as index because 
+                        temp_index[bit_counter]<=0;                     // note value is little endian
                     end
                     else temp_index[bit_counter] <= 1'bx;
                     
-                    if ( bit_counter == NOTE_WIDTH ) begin
-                        bit_counter<=MSG_WIDTH;
+                    if ( bit_counter == NOTE_WIDTH ) begin              // done collecting pitch value information
+                        bit_counter<=MSG_WIDTH;     
                         state<=GET_MSG;
                     end
                     else
@@ -73,7 +73,7 @@ module midi
             end
             
             GET_MSG: begin
-                serial_sample <= serial_sample + serial;
+                serial_sample <= serial_sample + serial;                // same as above, but for message byte
                 time_counter <= time_counter+1;
                 
                 if(time_counter == COUNT)  begin
@@ -96,7 +96,7 @@ module midi
             end
             READ_MSG: begin
                 state<=WAIT;
-                if(message == 11'b01000000010) begin
+                if(message == 11'b01000000010) begin                //"note on" message
                     if(~key1_held) begin
                         key1_index<=temp_index;
                         key1_held<=1;
@@ -106,7 +106,7 @@ module midi
                         key2_held<=1;
                         ready<=1;
                     end
-                end else if (message == 11'b01000000000) begin
+                end else if (message == 11'b01000000000) begin      //"note off" message
                     if(key2_held && (temp_index==key2_index)) begin
                         key2_index <= 0;
                         key2_held <= 0;

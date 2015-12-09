@@ -71,7 +71,7 @@ module game_logic
         //update player position
         case (state)
             START: begin
-                health<=NUM_LIVES;
+                health<=NUM_LIVES;                      // reset game state when game is over
                 score<=0;
                 p_obj1<=0;
                 p_obj2<=0;
@@ -86,16 +86,18 @@ module game_logic
                 end
             end
             PLAY: begin
-                speed<=speed_j;
+                speed<=speed_j;                         // reads switch state to determine speed of scrolling
                 if(health == 0) begin
                     state<= START;
                 end
                 else if(vsync_pulse) begin
-                    obj_frame_counter <= obj_frame_counter + 1;
+                    obj_frame_counter <= obj_frame_counter + 1;             //for animation of sprites
                     
+                    // each of the object blocks below follows the same general structure
+
                     if(obj1_on) begin
                         if (p_obj1[20:10] > speed) begin
-                            p_obj1[20:10] <= p_obj1[20:10] - speed;
+                            p_obj1[20:10] <= p_obj1[20:10] - speed;         // move the object to the left
                         end
                         else begin
                             p_obj1<=0;
@@ -106,6 +108,7 @@ module game_logic
                             p_obj1[25:23] <= p_obj1[25:23] + 1;
                         end
                         
+                        //detect collision
                         if ((p_obj1[20:10] < CHAR_WIDTH) && (p_obj1[9:0] < p_vpos + CHAR_HEIGHT + (~p_obj1[21])*BOOSTER) && (p_obj1[9:0] > p_vpos - OBJ_HEIGHT)) begin
                             case(p_obj1[21])
                                 0: begin
@@ -118,9 +121,10 @@ module game_logic
                             p_obj1 <= 0;
                         end
                     end else if ( obj_frame_counter == 1 && random[31:26] == 0 ) begin
-                        p_obj1[21]=random[3];
+                        //use random number to decide whether or not to generate object this frame
+                        p_obj1[21]=random[3];                   //randomly assign object type
                         p_obj1[20:10] <= SCREEN_WIDTH;
-                        p_obj1[9:0] <= 10'd230+random[7:0];
+                        p_obj1[9:0] <= 10'd230+random[7:0];     //randomly assign object height with offset tuned to appear within the range of the wave
                     end
                     
                     if(obj2_on) begin
