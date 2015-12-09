@@ -7,7 +7,6 @@
 // 
     //reset is reset
     //p_vpos is the vertical position of the character.
-    //char_frame is the frame of the character's sprite.  Currently not animated, 3 frames.
     //wave_prof is the vertical position of the waveform at the current hcount
     //p_obj inputs encode a variety of information about collectables / enemies on the screen.  Described in greater detail below.
     //vclock is a 65 mhz clock.
@@ -17,7 +16,6 @@
 /////////////////////////////////////////////////////////////////
 module display(input reset,
                input [9:0] p_vpos, //vertical position of character
-               input [1:0] char_frame, //frame of character; 0 = stationary, 1 = rising, 2 = falling
                input [9:0] wave_prof, //waveform profile
                input [25:0] p_obj1, //25:23 frame, 22:21 identity, 20:10 horizontal position, 9:0 vertical position
                input [25:0] p_obj2, //identity 0, collectable
@@ -40,6 +38,7 @@ module display(input reset,
     reg [9:0] vpos;
     reg [25:0] obj[4:0];
     reg [10:0] parallax_offset=0;
+    
     //sprite pixel outputs
     wire [11:0] character_rgb;
     wire [11:0] obj_rgb[4:0];
@@ -49,15 +48,17 @@ module display(input reset,
     wire [11:0] l_bg_rgb;
     wire [11:0] u_bg_rgb;
     wire [11:0] sky_rgb;
+    
+    //score decimal values
     reg [31:0] d100,d10,d1;
-    
-    
     
     //counter for animation
     reg [4:0] char_sprite_count; 
     
+    //health indicator (hearts)
     wire [2:0] health_indicator;
     assign health_indicator = {health<1,health<2,health<3};
+    
     //sprite declarations
     //character
     char_sprite #(.WIDTH(45), .HEIGHT(40), .LOG_FRAMES(2)) character 
@@ -110,10 +111,10 @@ module display(input reset,
                           .y(obj[3][9:0]), .s_type(obj[3][22:21]), .curr_frame(obj[3][25:23]), .p_rgb(shark_rgb[3])
                           );
                                                       
-      shark_sprite #(.WIDTH(40), .HEIGHT(20), .LOG_FRAMES(3)) shark5
-                            (.vclock(vclock), .hcount(hcount), .x(obj[4][20:10]), .vcount(vcount),
-                            .y(obj[4][9:0]), .s_type(obj[4][22:21]), .curr_frame(obj[4][25:23]), .p_rgb(shark_rgb[4])
-                            );
+    shark_sprite #(.WIDTH(40), .HEIGHT(20), .LOG_FRAMES(3)) shark5
+                          (.vclock(vclock), .hcount(hcount), .x(obj[4][20:10]), .vcount(vcount),
+                          .y(obj[4][9:0]), .s_type(obj[4][22:21]), .curr_frame(obj[4][25:23]), .p_rgb(shark_rgb[4])
+                          );
 
 
 
@@ -165,15 +166,14 @@ module display(input reset,
                 .prof_hcount(wave_prof), .offset(parallax_offset),.p_rgb(u_bg_rgb));
     
     initial begin //initial values
-        //char_x = 0;
         vpos = 384;
-        //char_frame = 0;
     end
     
     //at each new frame
     reg [10:0] i;
     reg [2:0] parallax_count=0;
-    //reg [10:0] parallax_offset=0;
+    
+    //each frame
     always @(negedge vsync) begin
         //update values
         vpos <= p_vpos;
@@ -183,10 +183,12 @@ module display(input reset,
         obj[3] <= p_obj4;
         obj[4] <= p_obj5;
         
+        //convert score values to decimal
         d100<=({10'b0,score}*10)>>10;
         d10<=((score-100*d100)*102)>>10;
         d1<=score-d100*100-d10*10;
         
+        //update offset gradually
         parallax_count<=parallax_count+1;
         if (parallax_count  == 0) parallax_offset<= parallax_offset+1;
         

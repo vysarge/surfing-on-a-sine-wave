@@ -32,8 +32,8 @@ module wave_logic #(parameter LOG_WIDTH=10, //log of horizontal values
     reg [31:0] waveform [1023:0]; //full waveform profile, with any applied transforms etc
     reg [10:0] index_counter; // current index (filling waveform) 
     reg [18:0] undivided_c_index; //next index * c_freq (current adjusted index * 256)
-    //reg [9:0] output_index; //index adjusted for period etc
     
+    //rom for sine values
     wave_rom wr(.index(c_index), .freq_id(freq_id), .value(c_value), .freq(freq_out), .period(period_out));
     
     //pipelining semaphore
@@ -47,12 +47,8 @@ module wave_logic #(parameter LOG_WIDTH=10, //log of horizontal values
     
     always @(posedge clock) begin
         
-        
+        //load wave height output
         wave_height <= waveform[index];
-        
-        //set correct index to retrieve for next cycle (loops input indexes repeatedly over single period where necessary
-        //output_index <= index % period;
-        
         
         //keeping track
         prev_filling_waveform <= filling_waveform;
