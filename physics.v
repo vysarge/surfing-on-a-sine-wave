@@ -48,7 +48,7 @@ module physics(input reset,
     wire [1:0] offset_calcp; //delayed by some number of cycles to allow frequency to update
     reg [10:0] hcount_p [3:0]; //value + hcount
     reg curr_w0; //1 if 0 and 1 were most recently updated
-    
+    reg [9:0] temp_player_profile;
     
     pipeliner #(.CYCLES(4), .LOG(3), .WIDTH(2)) p_hcount (.reset(reset), .clock(clock), .in(offset_calc), .out(offset_calcp));
     
@@ -96,6 +96,9 @@ module physics(input reset,
     //at each new clock cycle (pixel)
     always @(posedge clock) begin
         
+        if (hcount == 10) begin
+            player_profile <= temp_player_profile;
+        end
         
         //calculating index (total offset within a period), which is equal to (offset + hcount) % period
         //number of periods within offset_p+hcount
@@ -161,7 +164,7 @@ module physics(input reset,
             //calculate wave profile
             //wave_coeff and coeff ensure blending.  As they approach zero, the waveform becomes entirely composed of the new frequencies.
             wave_profile <= (((height[0] + height[1] - 384) * {10'b0, ~wave_coeff}) >> 10)+(({10'b0, wave_coeff} * (height[2] + height[3] - 384)) >> 10);
-            player_profile <= (((height[0] + height[1] - 384) * {10'b0, ~coeff}) >> 10)+(({10'b0, coeff} * (height[2] + height[3] - 384)) >> 10);
+            temp_player_profile <= (((height[0] + height[1] - 384) * {10'b0, ~coeff}) >> 10)+(({10'b0, coeff} * (height[2] + height[3] - 384)) >> 10);
             
             if (new_f_in) begin
                 //always update these values
@@ -184,7 +187,7 @@ module physics(input reset,
         else begin
             //calculate wave profile
             wave_profile <= (((height[2] + height[3] - 384) * {10'b0, ~wave_coeff}) >> 10)+(({10'b0, wave_coeff} * (height[0] + height[1] - 384)) >> 10); //+ ({10'b0, wave_coeff} * (height[0] + height[1] - 384)) >> 10);//height[2] + height[3] - 384;
-            player_profile <= (((height[2] + height[3] - 384) * {10'b0, ~coeff}) >> 10)+(({10'b0, coeff} * (height[0] + height[1] - 384)) >> 10);
+            temp_player_profile <= (((height[2] + height[3] - 384) * {10'b0, ~coeff}) >> 10)+(({10'b0, coeff} * (height[0] + height[1] - 384)) >> 10);
             
             
             if (new_f_in) begin

@@ -32,7 +32,7 @@ module audio_wave #(parameter BITS = 6)
     
     
     initial begin
-        
+        freq_id_rom = 5'b00000;
         //freq_id = 12;
         //period = 243; //middle C
         //freq = 270;

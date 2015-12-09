@@ -91,10 +91,10 @@ module audio #(parameter BITS = 6, //bit resolution of audio output
     audio_wave #(.BITS(6)) audio_wave5 (.reset(reset), .clock(clock), .form(form), .freq_id(freq_id2), .new_f(new_f), .level(level[5]));
     
     initial begin
-        freq[0] <= 5'b11111;
-        freq[1] <= 5'b11111;
-        freq[2] <= 5'b11111;
-        freq[3] <= 5'b11111;
+        freq[0] <= 5'b00000;
+        freq[1] <= 5'b00000;
+        freq[2] <= 5'b00000;
+        freq[3] <= 5'b00000;
         
         note_counter <= 0;
     end

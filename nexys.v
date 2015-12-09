@@ -123,6 +123,9 @@ module nexys(
     wire [4:0] freq_id;
     //assign freq_id = SW[15:11];
     wire new_f;
+    reg new_f_sw;
+    reg prev_sw1;
+    wire gl_new_f;
     
 
     wire wave_ready;
@@ -157,6 +160,10 @@ module nexys(
     
     always @(posedge clock_65mhz) begin
         
+        prev_sw1 <= sw1;
+        
+        if (sw1 & ~prev_sw1) new_f_sw <= 1;
+        else new_f_sw <= 0;
         
         //updating previous variables
         prev_disp_sel <= disp_sel;
@@ -165,9 +172,9 @@ module nexys(
         prev_left <= left;
         prev_right <= right;
 
-        if(prev3_hcount==0) begin 
+        //if(prev3_hcount==0) begin 
             p_vpos<= p_height - 25;              //sample player height to prevent glitching
-        end 
+        //end 
     end
     
     wire sw1, sw2, sw3, sw4, sw5;
@@ -189,12 +196,16 @@ module nexys(
     //assign freq_id = key_index - 7'd48;
 
     
+    
+    //assign new_f = gl_new_f | new_f_sw;
     wire [9:0] disp_wave;
     wire [4:0] freq_id1, freq_id2;
-    //assign freq_id1 = SW[15:11];
-    //assign freq_id2 = SW[10:6];
+    wire [4:0] gl_freq_id1, gl_freq_id2;
+    assign freq_id1 = sw1 ? SW[10:6] : gl_freq_id1;
+    assign freq_id2 = sw1 ? SW[10:6] : gl_freq_id2;
     wire [9:0] p_height;
     wire [20:0] period;
+    
     
     wire [10:0] period0;
     wire [3:0] wave_ready;
@@ -219,12 +230,12 @@ module nexys(
     wire indic;
     assign LED[3] = indic;
     
-    game_logic gfsm (.clock(clock_65mhz),.speed_j(SW[15:12]),.key1_index(key1_index),.key2_index(key2_index),.midi_ready(midi_ready),.p_vpos(p_height),
+    game_logic gfsm (.clock(clock_65mhz),.speed_j(SW[15:12]),.key1_index(key1_index),.key2_index(key2_index),.midi_ready(midi_ready),.p_vpos(p_vpos),
                 		.wave_height(disp_wave),.wave_ready(wave_ready),.hcount(hcount),.health(health),
                 		.vcount(vcount),.vsync(vsync),.hsync(hsync),.blank(blank), .score(score),
                 		.speed(d_offset), .char_frame(char_frame), .p_obj1(obj1),.p_obj2(obj2),
                 		.seed({2{SW[15:0]}}),.p_obj3(obj3), .p_obj4(obj4),.p_obj5(obj5),
-                		.freq_id1(freq_id1),.freq_id2(freq_id2),.new_freq(new_f), .indic(indic));
+                		.freq_id1(gl_freq_id1),.freq_id2(gl_freq_id2),.new_freq(new_f), .indic(indic));
     
     
     assign AUD_SD = 1; //audio output enable
