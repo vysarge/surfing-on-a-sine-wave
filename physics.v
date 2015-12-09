@@ -80,18 +80,6 @@ module physics(input reset,
     wave_logic wl3 (.reset(reset), .clock(clock), .freq_id(freq_id[3]), .new_f(new_f[3]), 
                     .index(index[3]), .wave_height(height_out[3]), .period(period[3]), .c_freq(freq[3]), .wave_ready(ready[3]));
     
-    initial begin //initial values
-        coeff <= 9'b111111111;
-        wave_coeff <= 9'b111111111;
-        wave_ready <= 0;
-        curr_w0 <= 0;
-        offset_p[0] <= 0;
-        offset_p[1] <= 0;
-        offset_p[2] <= 0;
-        offset_p[3] <= 0;
-        offset_change <= 0;
-        offset_received <= 0;
-    end
     
     //at each new clock cycle (pixel)
     always @(posedge clock) begin

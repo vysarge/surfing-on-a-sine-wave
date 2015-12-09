@@ -1,13 +1,13 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
 // 
+// A module to hold sine audio values and output them in response to freq_id inputs
+// Also holds (relatively) high-res periods and frequencies.
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
 
 `timescale 1ns / 1ps
-
-
 
 module audio_rom #(parameter BITS = 6)
                 (input [10:0] index, // horizontal input
@@ -16,7 +16,6 @@ module audio_rom #(parameter BITS = 6)
                 output reg [15:0] freq, // proportional to frequency; adjusted so that freq*period = 2^16
                 output reg [15:0] period //output period
                 ); 
-    
     
     reg [10:0] c_index; //adjusted index
     reg [10:0] value; //vertical value, 11 bits
@@ -67,8 +66,8 @@ module audio_rom #(parameter BITS = 6)
             5'd24: begin freq = 16'd7268; period = 16'd2308; end //A4
             5'd25: begin freq = 16'd7700; period = 16'd2178; end
             5'd26: begin freq = 16'd8158; period = 16'd2056; end
-            5'd27: begin freq = 16'd8643; period = 16'd1941; end
-            5'd28: begin freq = 16'd9157; period = 16'd1832; end
+            5'd27: begin freq = 16'd8643; period = 16'd1941; end //extra frequency values to allow chords 
+            5'd28: begin freq = 16'd9157; period = 16'd1832; end //extra range
             5'd29: begin freq = 16'd9702; period = 16'd1729; end
             5'd30: begin freq = 16'd10279; period = 16'd1632; end
             5'd31: begin freq = 16'd0; period = 16'd1; end
@@ -76,7 +75,7 @@ module audio_rom #(parameter BITS = 6)
             default: begin freq = 16'd1817; period = 16'd9233; end
         endcase
         
-        
+        // level output requires many fewer bits than this rom contains
         level <= (value >> (10 - BITS));
         
         //sine values

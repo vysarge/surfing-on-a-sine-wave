@@ -29,7 +29,7 @@ module nexys(
     wire clock_25mhz;
     
     
-    
+    //generate a 65mhz and 25mhz clock
     clk_wiz_0 gen(.clk_100mhz(CLK100MHZ), .clk_65mhz(clock_65mhz), .clk_25mhz(clock_25mhz), .reset(clk_reset), .locked(locked));
     
     //reset signal
@@ -43,11 +43,6 @@ module nexys(
     
     
     
-    
-    
-// create 25mhz system clock
-    
-    //clock_quarter_divider clockgen(.clk100_mhz(CLK100MHZ), .clock_25mhz(clock_25mhz));
 
 //  instantiate 7-segment display;  
     wire [31:0] data;
@@ -55,28 +50,9 @@ module nexys(
     display_8hex display8hex(.clk(clock_65mhz),.data(data), .seg(segments), .strobe(AN));    
     assign SEG[6:0] = segments;
     assign SEG[7] = 1'b1;
-
+    
 //////////////////////////////////////////////////////////////////////////////////
-//
-//  remove these lines and insert your lab here
-
-    //assign data = {28'h0123456, SW[3:0]};   // display 0123456 + SW
-
-    assign LED17_R = BTNL;
-    assign LED17_G = BTNC;
-    assign LED17_B = BTNR; 
-
-
-
-//
-//////////////////////////////////////////////////////////////////////////////////
-
-
-
-
- 
-//////////////////////////////////////////////////////////////////////////////////
-// temporary organization / testing rig for peripheral modules
+// main module instantiation / data transfer
     
     //parameters only for later calculations; do not change
     parameter SCREEN_HEIGHT = 768;
@@ -127,16 +103,6 @@ module nexys(
     reg prev_sw1;
     wire gl_new_f;
     
-
-    wire wave_ready;
-    
-    
-    
-    reg [10:0] wave_index;
-    wire disp_sel; // if 0, display horizontal profile.  If 1, display ramp
-    reg prev_disp_sel; //previous value of disp_sel; 65mhz
-    reg prev_up, prev_down, prev_left, prev_right;
-    
     //button outputs
     wire up;
     wire down;
@@ -151,17 +117,10 @@ module nexys(
     debounce dbr(.reset(reset),.clock(clock_65mhz),.noisy(BTNR),.clean(right));
     
     
-    assign LED16_R = left;                  // left button -> red led
-    assign LED16_G = BTNC;                  // center button -> green led
-    assign LED16_B = right;                  // right button -> blue led
-    
-    
-    
-    
     always @(posedge clock_65mhz) begin
         
+        //switch testing stuff
         prev_sw1 <= sw1;
-        
         if (sw1 & ~prev_sw1) new_f_sw <= 1;
         else new_f_sw <= 0;
         
@@ -171,12 +130,12 @@ module nexys(
         prev_down <= down;
         prev_left <= left;
         prev_right <= right;
-
-        //if(prev3_hcount==0) begin 
-            p_vpos<= p_height - 25;              //sample player height to prevent glitching
-        //end 
+        
+        //update for input to game logic, others
+        p_vpos <= p_height - 25;
     end
     
+    //debouncing switches for test input
     wire sw1, sw2, sw3, sw4, sw5;
     debounce s1(.reset(reset),.clock(clock_65mhz),.noisy(SW[1]),.clean(sw1));
     debounce s2(.reset(reset),.clock(clock_65mhz),.noisy(SW[2]),.clean(sw2));
@@ -184,20 +143,19 @@ module nexys(
     debounce s4(.reset(reset),.clock(clock_65mhz),.noisy(SW[4]),.clean(sw4));
     debounce s5(.reset(reset),.clock(clock_65mhz),.noisy(SW[5]),.clean(sw5));
     
-    
+    //vga signal generation
     xvga vga1(.vclock(clock_65mhz),.hcount(hcount),.vcount(vcount),
           .hsync(hsync),.vsync(vsync),.blank(blank));
     
+    //deserialization
     wire midi_ready;
     wire [6:0] key1_index;
     wire [6:0] key2_index;
     midi kb(.clk(clock_65mhz),.serial(JA[0]),.ready(midi_ready),
         .key1_index(key1_index),.key2_index(key2_index));
-    //assign freq_id = key_index - 7'd48;
-
     
     
-    //assign new_f = gl_new_f | new_f_sw;
+    //lots of inputs and outputs
     wire [9:0] disp_wave;
     wire [4:0] freq_id1, freq_id2;
     wire [4:0] gl_freq_id1, gl_freq_id2;
@@ -205,20 +163,18 @@ module nexys(
     assign freq_id2 = sw1 ? SW[10:6] : gl_freq_id2;
     wire [9:0] p_height;
     wire [20:0] period;
-    
-    
-    wire [10:0] period0;
     wire [3:0] wave_ready;
     wire [10:0] d_offset;
     wire [9:0] score;
     wire [1:0] health;
-    
     wire [10:0] paroffset;
+    
+    //physics module
     physics physics(.reset(reset), .clock(clock_65mhz), .vsync(vsync), .d_offset(d_offset), .r_offset(up), .hcount(hcount),
                     .freq_id1(freq_id1), .freq_id2(freq_id2), .new_f_in(new_f),
                     .player_profile(p_height), .wave_profile(disp_wave));
     
-    
+    //display module
     display display(.reset(reset), .p_vpos(p_vpos), .char_frame(0), .wave_prof(disp_wave), 
                     .vclock(clock_65mhz), .hcount(prev_hcount), .vcount(prev_vcount),
                     .score(score),.health(health),.d100(d100),.d10(d10),.d1(d1),
@@ -226,7 +182,7 @@ module nexys(
                     .hsync(prev_hsync), .vsync(prev_vsync), .blank(prev_blank), .p_rgb(p_rgb));
                     
                     
-    
+    //indicator
     wire indic;
     assign LED[3] = indic;
     
@@ -256,9 +212,7 @@ module nexys(
     assign VGA_HS = ~prev3_hsync;
     assign VGA_VS = ~prev3_vsync;
     
-    //test outputs
-    //assign data[11:0] = {1'b0, reset_count}; //last three digits disp_wave
-    //assign data[31:20] = {period0}; //first three digits wave_index
+    
     wire [3:0] d100,d10,d1;
     assign data[31:0]={4'b0,d100,d10,d1,2'b0,health,2'b0,score};
     wire [7:0] bcd1;
@@ -275,10 +229,6 @@ module nexys(
     wire new_pulse;
     wire [1:0] rng_state;
     wire [9:0] i_rng;
-    /*
-    pulse2 p (.clock(clock_65mhz),.signal(down),.out(new_pulse));
-    rng rando (.clk(clock_65mhz),.new_number(new_pulse),.seed({2{SW[15:0]}}),
-                .random(random));
-    */
+    
 endmodule
 
